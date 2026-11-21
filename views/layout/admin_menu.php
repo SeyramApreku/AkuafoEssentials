@@ -1,6 +1,6 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
-$tCur = $script === 'manage.php' ? ($_GET['t'] ?? 'products') : ($script === 'admin_boxes.php' ? 'boxes' : ($script === 'admin_orders.php' ? 'orders' : null));
+$tCur = $script === 'manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers'][$script] ?? null);
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
     ['Products',     'views/admin/manage.php?t=products',   'products'],
@@ -11,9 +11,11 @@ $links = [
     ['Partners',     'views/admin/manage.php?t=partners',   'partners'],
     ['Weekly Boxes', 'views/admin/admin_boxes.php',         'boxes'],
     ['Orders',       'views/admin/admin_orders.php',        'orders'],
+    ['Customers',    'views/admin/admin_customers.php',     'customers'],
     ['View Store',   'index.php',                           null],
 ];
 ?>
+
 <style>
   #adminOverlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .3s; }
   #adminOverlay.open { opacity: 1; pointer-events: auto; }

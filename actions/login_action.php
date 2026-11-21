@@ -12,6 +12,11 @@ if ($email === '' || $pass === '') {
 $result = (new CustomerController())->login($email, $pass);
 
 if ($result['success']) {
+    $chk = (new Database())->fetchOne("SELECT is_active FROM customer WHERE customer_id = ?", [$result['customer']['customer_id']]);
+    if ($chk && (int)$chk['is_active'] === 0) {
+        echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Contact support.']); exit;
+    }
+
     session_regenerate_id(true);
     $c = $result['customer'];
     $_SESSION['customer_id']    = $c['customer_id'];
