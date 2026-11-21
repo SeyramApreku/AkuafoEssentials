@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Outfit:wght@300;400;500;600&display=swap');
+
+:root {
+  --background: #F4EFE4; --foreground: #1A1916; --card: #FAF7F0; --card-foreground: #1A1916;
+  --primary: #2B4A12; --primary-foreground: #F4EFE4; --secondary: #E9D9A8; --secondary-foreground: #1A1916;
+  --muted: #EDE6D6; --muted-foreground: #6B6050; --accent: #B24008; --accent-foreground: #FAF7F0;
+  --border: #D5CBBA; --ring: #2B4A12;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background-color: var(--background); color: var(--foreground); font-family: 'Outfit', sans-serif; font-weight: 400; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .font-display { font-family: 'Fraunces', serif; }
+button { cursor: pointer; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Cart drawer */
+#cart-drawer { transform: translateX(100%); transition: transform .3s; }
+#cart-drawer.open { transform: translateX(0); }
+#cart-backdrop { display: none; }
+#cart-backdrop.open { display: block; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover { opacity: .9; }
+.pill-on { border-color: var(--primary) !important; background: var(--primary) !important; color: var(--primary-foreground) !important; }
+.pick:has(input:checked) { border-color: var(--primary) !important; background: var(--muted); }
+.pill:has(input:checked) { border-color: var(--primary) !important; background: var(--primary); color: var(--primary-foreground); }
+.pill input, .pick input { position: absolute; opacity: 0; pointer-events: none; }
