@@ -117,6 +117,22 @@ $days = zone_day_names();
     <?php endforeach; ?>
     <?php if (!$zones): ?><p class="p-6 text-sm" style="color:var(--muted-foreground)">No zones yet.</p><?php endif; ?>
   </div>
+
+  <?php $wait = []; try { $wait = $dc->waitlist(); } catch (PDOException $e) { /* table created in D2 */ } ?>
+  <h2 class="font-display text-2xl mt-12 mb-2">Delivery waitlist (<?= count($wait) ?>)</h2>
+  <p class="text-xs mb-4" style="color:var(--muted-foreground)">Customers asking us to deliver to areas we don't cover yet. Add the area to a zone, then email them.</p>
+  <div class="border" style="border-color:var(--border)">
+    <?php foreach ($wait as $w): ?>
+      <div class="flex items-center gap-4 p-3 border-b last:border-b-0 text-sm" style="border-color:var(--border)">
+        <span class="font-medium w-40 truncate"><?= e($w['area_name']) ?></span>
+        <a href="mailto:<?= e($w['email']) ?>" class="flex-1 truncate underline"><?= e($w['email']) ?></a>
+        <span class="text-xs" style="color:var(--muted-foreground)"><?= e(date('j M Y', strtotime($w['created_at']))) ?></span>
+        <form method="post" action="<?= $act ?>"><input type="hidden" name="act" value="delete_waitlist"><input type="hidden" name="id" value="<?= (int)$w['id'] ?>">
+          <button class="text-xs font-medium px-3 py-1.5 border" style="border-color:var(--border)">Remove</button></form>
+      </div>
+    <?php endforeach; ?>
+    <?php if (!$wait): ?><p class="p-4 text-sm" style="color:var(--muted-foreground)">Nobody on the waitlist.</p><?php endif; ?>
+  </div>
 <?php endif; ?>
 </div>
 </body>

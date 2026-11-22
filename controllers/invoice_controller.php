@@ -64,6 +64,7 @@ function build_invoice_html($d)
         ' . $info('Billed to', e($d['name'] ? $d['name'] . ', ' : '') . e($d['email'])) . '
         ' . (!empty($o['phone']) ? $info('Phone', e($o['phone'])) : '') . '
         ' . $info(($o['order_type'] ?? '') === 'entertaining' ? 'Event delivery' : 'Delivery', e($d['delivery']) . ' (' . e($o['delivery_zone']) . ')') . '
+        ' . (order_address_line($o) ? $info('Deliver to', e(order_address_line($o))) : '') . '
         ' . (!empty($o['event_address']) ? $info('Event address', e($o['event_address'])) : '') . '
       </table>
     </td></tr>

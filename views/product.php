@@ -20,6 +20,9 @@ include __DIR__ . '/layout/header.php';
       <p class="text-sm mb-4 italic" style="color:var(--muted-foreground)"><?= e($p['twi']) ?></p>
       <p class="text-2xl font-display mb-1"><?= money($p['price']) ?></p>
       <p class="text-xs mb-6" style="color:var(--muted-foreground)"><?= e($p['unit']) ?></p>
+      <?php $stock = isset($p['stock_qty']) && $p['stock_qty'] !== null ? (int)$p['stock_qty'] : null; $soldOut = $stock !== null && $stock <= 0; ?>
+      <?php if ($soldOut): ?><p class="text-sm font-medium mb-4 p-2 inline-block" style="background:var(--muted);color:var(--accent)">Sold out. Check back after the next harvest.</p>
+      <?php elseif ($stock !== null && $stock <= (int)($p['low_stock_at'] ?? 5)): ?><p class="text-xs mb-4" style="color:var(--accent)">Only <?= $stock ?> left</p><?php endif; ?>
       <p class="text-sm leading-relaxed mb-6" style="color:var(--muted-foreground)"><?= e($p['description']) ?></p>
       <div class="flex gap-4 text-xs mb-8" style="color:var(--muted-foreground)"><span>Farmer: <strong style="color:var(--foreground)"><?= e($p['farmer']) ?></strong></span><span>·</span><span><?= e($p['region']) ?></span></div>
       <form method="post" action="<?= url('actions/cart_action.php') ?>" class="flex items-center gap-4 mb-4">
@@ -30,7 +33,7 @@ include __DIR__ . '/layout/header.php';
           <span id="qty-label" class="px-3 py-2 text-sm border-l border-r" style="border-color:var(--border)">1</span>
           <button type="button" data-qty="1" class="px-3 py-2 text-sm">+</button>
         </div>
-        <button class="flex-1 py-2.5 text-sm font-medium btn-primary">Add to order</button>
+        <button class="flex-1 py-2.5 text-sm font-medium btn-primary" <?= $soldOut ? 'disabled style="opacity:.4;cursor:not-allowed"' : '' ?>><?= $soldOut ? 'Sold out' : 'Add to order' ?></button>
       </form>
       <?php if ($recipe): ?><a href="<?= url('views/recipes.php?id=' . $recipe['id']) ?>" class="text-sm underline underline-offset-4" style="color:var(--accent)">See recipe using <?= e($p['name']) ?> →</a><?php endif; ?>
     </div>

@@ -63,6 +63,12 @@ if ($act === 'save_area') {
     redirect($page . '?zone=' . $zoneId);
 }
 
+if ($act === 'delete_waitlist') {
+    $dc->deleteWaitlist($id);
+    $_SESSION['admin_msg'] = 'Removed from the waitlist.';
+    redirect($page);
+}
+
 if ($act === 'delete_area') {
     $_SESSION['admin_msg'] = $dc->deleteArea($id)
         ? 'Area deleted.'

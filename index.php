@@ -26,7 +26,7 @@ include __DIR__ . '/views/layout/header.php';
 
   <section class="border-b border-t" style="border-color:var(--border);background:var(--muted)">
     <div class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-      <?php foreach ([['Direct from aku_farmers','No market chain markup'],['Weekly box delivery','Recurring mobile money or card'],['Fully traceable','Farm, region, and farmer named'],['Pre-order for events','Weddings, Christmas, gatherings']] as [$l,$d]): ?>
+      <?php foreach ([['Direct from Local Farmers','No market chain markup'],['Weekly box delivery','Recurring mobile money or card'],['Fully traceable','Farm, region, and farmer named'],['Pre-order for events','Weddings, Christmas, gatherings']] as [$l,$d]): ?>
         <div class="flex flex-col gap-1"><span class="text-sm font-medium"><?= $l ?></span><span class="text-xs" style="color:var(--muted-foreground)"><?= $d ?></span></div>
       <?php endforeach; ?>
     </div>

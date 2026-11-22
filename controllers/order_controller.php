@@ -19,7 +19,10 @@ function place_order($date, $window, $method, $phone, $zoneId, $extra = [])
              'total' => $cart->subtotal() + $q['pay'],
              'date' => $date, 'window' => $window, 'method' => $method, 'phone' => $phone,
              'email' => $email, 'user_id' => $_SESSION['customer_id'], 'zone' => $q['zone'], 'credit' => $q['credit'],
-             'order_type' => $extra['order_type'] ?? 'standard', 'event_address' => $extra['event_address'] ?? null];
+             'order_type' => $extra['order_type'] ?? 'standard', 'event_address' => $extra['event_address'] ?? null,
+             // D2: copy of the delivery address
+             'zone_id' => $extra['zone_id'] ?? null, 'address_id' => $extra['address_id'] ?? null, 'gps_address' => $extra['gps_address'] ?? null,
+             'area_name' => $extra['area_name'] ?? null, 'landmark' => $extra['landmark'] ?? null, 'delivery_notes' => $extra['delivery_notes'] ?? null];
     return (new OrderClass())->create($data, $cart->items());
 }
 

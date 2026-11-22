@@ -40,7 +40,11 @@ switch ($act) {
         }
         break;
     case 'remove': cart()->remove($id); $_SESSION['cart_open'] = true; break;
-    case 'inc': cart()->changeQty($id, 1); $_SESSION['cart_open'] = true; break;
+    case 'inc':   // produce goes through the stock check; everything else just goes up by one
+        if (strpos($id, 'p-') === 0) { $item = build_cart_item('produce', substr($id, 2), 1); if ($item) cart()->add($item); }
+        else cart()->changeQty($id, 1);
+        $_SESSION['cart_open'] = true;
+        break;
     case 'dec': cart()->changeQty($id, -1); $_SESSION['cart_open'] = true; break;
     case 'clear': cart()->clear(); unset($_SESSION['cart_order_ref']); $_SESSION['cart_open'] = true; break;
     case 'pass': cart()->setPass(true); break;

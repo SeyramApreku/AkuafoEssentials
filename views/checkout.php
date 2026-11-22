@@ -6,7 +6,12 @@ $accountEmail = (new OrderClass())->customer(customer_id())['customer_email'] ??
 $pageTitle = 'Checkout | Akuafo & Essentials';
 include __DIR__ . '/layout/header.php';
 $items = $cartObj->items(); $sub = $cartObj->subtotal();
-$zones = delivery_zones(); $tier = member_tier(); $creditLeft = delivery_credit_left();
+$tier = member_tier(); $creditLeft = delivery_credit_left();
+// Saved addresses (D2): the chosen address decides the zone and the delivery fee.
+require_once __DIR__ . '/../classes/delivery_class.php';
+$addresses = array_values(array_filter((new DeliveryClass())->addresses(customer_id()), fn($a) => (int)$a['deliverable']));
+$pickId    = (int)($_SESSION['checkout_address'] ?? 0); unset($_SESSION['checkout_address']);
+if (!$pickId && $addresses) $pickId = (int)$addresses[0]['id'];   // default address comes first
 $errors = $_SESSION['checkout_errors'] ?? []; unset($_SESSION['checkout_errors']);
 $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
 
@@ -56,17 +61,29 @@ if ($isEvent) {
     </div>
     <?php endif; ?>
 
-    <h2 class="font-display text-xl mb-2">Delivery area</h2>
-    <select name="zone" id="zone" required class="w-full px-4 py-3 text-sm border bg-transparent mb-6" style="border-color:var(--border)">
-      <option value="">Select your area</option>
-      <?php foreach ($zones as $z): ?>
-        <option value="<?= (int)$z['id'] ?>" data-fee="<?= (float)$z['fee'] ?>"><?= e($z['name']) ?> (<?= money($z['fee']) ?>)</option>
-      <?php endforeach; ?>
-    </select>
+    <div class="flex items-end justify-between mb-2">
+      <h2 class="font-display text-xl">Deliver to</h2>
+      <a href="<?= url('views/addresses.php?new=1&next=' . urlencode('views/checkout.php')) ?>" class="text-xs underline">+ Add a new address</a>
+    </div>
+    <?php if (!$addresses): ?>
+      <div class="p-4 mb-6 border text-sm" style="border-color:var(--accent);background:var(--muted)">
+        You haven't saved a delivery address yet. <a href="<?= url('views/addresses.php?new=1&next=' . urlencode('views/checkout.php')) ?>" class="underline font-medium">Add your address</a> (with your GhanaPostGPS code) to continue.
+      </div>
+    <?php else: ?>
+      <div class="flex flex-col gap-2 mb-6" id="addresses">
+        <?php foreach ($addresses as $a): ?>
+          <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)">
+            <input type="radio" name="address_id" value="<?= (int)$a['id'] ?>" data-fee="<?= (float)$a['fee'] ?>" <?= (int)$a['id'] === $pickId ? 'checked' : '' ?> required>
+            <span class="font-medium"><?= e($a['label'] ?: 'Address') ?> · <?= e($a['gps_address']) ?></span>
+            <span class="block text-xs" style="color:var(--muted-foreground)"><?= e($a['area_name']) ?> (<?= e($a['zone_name']) ?>, <?= money($a['fee']) ?>)<?= $a['landmark'] ? ' · Near ' . e($a['landmark']) : '' ?> · <?= e($a['phone']) ?></span>
+          </label>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
 
     <div class="space-y-1.5 text-sm mb-10 p-4 border" style="border-color:var(--border)">
       <div class="flex justify-between"><span style="color:var(--muted-foreground)">Subtotal</span><span><?= money($sub) ?></span></div>
-      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span id="del-fee">Select your area</span></div>
+      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span id="del-fee">Choose an address</span></div>
       <div id="credit-row" class="justify-between" style="display:none"><span style="color:var(--muted-foreground)">Membership delivery credit</span><span id="del-credit"></span></div>
       <div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span id="grand-total"><?= money($sub) ?></span></div>
       <p class="text-xs pt-1" style="color:var(--muted-foreground)"><?= $hasBox ? 'Box subscriptions are billed weekly.' : 'One-off payment.' ?></p>
@@ -120,26 +137,21 @@ if ($isEvent) {
       <p class="text-xs mt-2" style="color:var(--muted-foreground)">This is your account email. Your payment confirmation and invoice will be sent here.</p>
     </div>
 
-    <div class="mb-10">
-      <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)">Mobile number</label>
-      <input type="tel" name="phone" required placeholder="e.g. 0244 000 000" class="w-full px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
-      <p class="text-xs mt-2" style="color:var(--muted-foreground)">We use this to confirm your delivery slot. You will choose how to pay on the next step.</p>
-    </div>
+    <p class="text-xs mb-10" style="color:var(--muted-foreground)">We'll call the phone number on your delivery address to confirm your slot. You will choose how to pay on the next step.</p>
 
-    <button class="w-full py-3 text-sm font-medium btn-primary">Continue to order summary →</button>
+    <button class="w-full py-3 text-sm font-medium btn-primary" <?= $addresses ? '' : 'disabled style="opacity:.4"' ?>>Continue to order summary →</button>
   </form>
 
   <script>
   (function () {
     var sub = <?= (float)$sub ?>, credit = <?= (float)$creditLeft ?>;
-    var zone = document.getElementById('zone');
     function m(n) { return 'GH₵ ' + (n % 1 === 0 ? n : n.toFixed(2)); }
     function update() {
-      var o = zone.options[zone.selectedIndex];
+      var o = document.querySelector('input[name=address_id]:checked');
       var fee = o && o.dataset.fee ? parseFloat(o.dataset.fee) : null;
       var row = document.getElementById('credit-row');
       if (fee === null) {
-        document.getElementById('del-fee').textContent = 'Select your area';
+        document.getElementById('del-fee').textContent = 'Choose an address';
         row.style.display = 'none';
         document.getElementById('grand-total').textContent = m(sub);
         return;
@@ -150,7 +162,7 @@ if ($isEvent) {
       document.getElementById('del-credit').textContent = '- ' + m(use);
       document.getElementById('grand-total').textContent = m(sub + fee - use);
     }
-    zone.addEventListener('change', update);
+    document.querySelectorAll('input[name=address_id]').forEach(function (r) { r.addEventListener('change', update); });
     update();
   })();
   </script>

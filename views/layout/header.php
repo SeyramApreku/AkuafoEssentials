@@ -28,15 +28,51 @@ $here = $_SERVER['REQUEST_URI'];
       <?php endforeach; ?>
     </nav>
     <div class="flex items-center gap-3">
-      <?php if (is_admin()): ?><button type="button" onclick="toggleAdminNav()" class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border)">Admin menu</button><?php endif; ?>
-
-        <?php if (!is_admin() && ($mt = member_tier())): ?><span class="inline-flex items-center gap-1 text-xs font-medium" title="<?= e(ucfirst($mt)) ?> member"><?= tier_star($mt) ?><span class="hidden md:inline"><?= e(ucfirst($mt)) ?></span></span><?php endif; ?>
-      <?php if (customer_id() > 0): ?>
-        <a href="<?= url('views/orders.php') ?>" class="text-xs font-medium" style="color:<?= $current === 'orders.php' ? 'var(--primary)' : 'var(--muted-foreground)' ?>">My orders</a>
-        <a href="<?= url('actions/logout_action.php') ?>" class="text-xs font-medium" style="color:var(--muted-foreground)">Log out</a>
-      <?php else: ?>
-        <a href="<?= url('views/login.php') ?>" class="text-xs font-medium" style="color:var(--muted-foreground)">Log in</a>
-      <?php endif; ?>
+      <?php $loggedIn = customer_id() > 0; $mt = $loggedIn && !is_admin() ? member_tier() : null;
+            $first = $loggedIn ? explode(' ', trim($_SESSION['customer_name'] ?? 'there'))[0] : ''; ?>
+      <div class="relative" id="account">
+        <button type="button" id="account-btn" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu"
+                class="account-btn relative w-9 h-9 rounded-full flex items-center justify-center border" style="border-color:var(--border);background:var(--card)"
+                title="<?= $loggedIn ? 'Your account' : 'Log in' ?>">
+          <span class="sr-only">Account</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle class="account-head" cx="12" cy="8" r="4"/>
+            <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>
+          </svg>
+          <?php if ($mt): ?><span class="absolute -bottom-1 -right-1" title="<?= e(ucfirst($mt)) ?> member"><?= tier_star($mt, 14) ?></span><?php endif; ?>
+          <?php if ($loggedIn): ?><span class="absolute top-0 right-0 w-2 h-2 rounded-full" style="background:var(--primary);box-shadow:0 0 0 2px var(--background)"></span><?php endif; ?>
+        </button>
+        <div id="account-menu" class="account-menu absolute right-0 mt-2 w-56 border shadow-lg py-2 z-40" style="background:var(--card);border-color:var(--border)" role="menu" hidden>
+          <?php if ($loggedIn): ?>
+            <p class="px-4 pt-1 pb-2 text-xs border-b mb-1" style="color:var(--muted-foreground);border-color:var(--border)">Hi, <strong style="color:var(--foreground)"><?= e($first) ?></strong><?= $mt ? ' · ' . e(ucfirst($mt)) . ' member' : '' ?></p>
+            <?php if (is_admin()): ?><button type="button" onclick="toggleAdminNav()" class="account-item w-full text-left" role="menuitem">Admin menu</button><?php endif; ?>
+            <a href="<?= url('views/orders.php') ?>" class="account-item" role="menuitem">My orders</a>
+            <a href="<?= url('views/addresses.php') ?>" class="account-item" role="menuitem">My addresses</a>
+            <a href="<?= url('views/membership.php') ?>" class="account-item" role="menuitem"><?= $mt ? 'My membership' : 'Membership' ?></a>
+            <a href="<?= url('actions/logout_action.php') ?>" class="account-item border-t mt-1 pt-2" style="border-color:var(--border);color:var(--accent)" role="menuitem">Log out</a>
+          <?php else: ?>
+            <a href="<?= url('views/login.php') ?>" class="account-item" role="menuitem">Log in</a>
+            <a href="<?= url('views/register.php') ?>" class="account-item" role="menuitem">Create an account</a>
+          <?php endif; ?>
+        </div>
+      </div>
+      <style>
+        .account-head { transform-origin: 12px 12px; transform-box: view-box; animation: head-nod .9s ease-in-out .4s 1; }
+        .account-btn:hover .account-head, .account-btn:focus-visible .account-head { animation: head-nod .9s ease-in-out infinite; }
+        @keyframes head-nod { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-1.5px) rotate(-8deg); } 60% { transform: translateY(-1.5px) rotate(8deg); } }
+        @media (prefers-reduced-motion: reduce) { .account-head { animation: none !important; } }
+        .account-item { display: block; padding: 8px 16px; font-size: 13px; }
+        .account-item:hover, .account-item:focus-visible { background: var(--muted); outline: none; }
+      </style>
+      <script>
+      (function () {
+        var btn = document.getElementById('account-btn'), menu = document.getElementById('account-menu');
+        function set(open) { menu.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) { var f = menu.querySelector('a,button'); if (f) f.focus(); } }
+        btn.addEventListener('click', function (e) { e.stopPropagation(); set(menu.hidden); });
+        document.addEventListener('click', function (e) { if (!menu.hidden && !document.getElementById('account').contains(e.target)) set(false); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { set(false); btn.focus(); } });
+      })();
+      </script>
 
       <button data-open-cart aria-label="Open cart" class="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 btn-primary">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/></svg>
@@ -47,7 +83,6 @@ $here = $_SERVER['REQUEST_URI'];
   </div>
   <div id="mobile-menu" class="hidden lg:hidden border-t px-5 py-3" style="border-color:var(--border)">
     <?php foreach (nav_items() as $path => $label): ?><a href="<?= url($path) ?>" class="block py-2 text-sm font-medium"><?= $label ?></a><?php endforeach; ?>
-    <?php if (customer_id() > 0): ?><a href="<?= url('views/orders.php') ?>" class="block py-2 text-sm font-medium">My orders</a><?php endif; ?>
   </div>
 </header>
 <?php if (is_admin()) include __DIR__ . '/admin_menu.php'; ?>

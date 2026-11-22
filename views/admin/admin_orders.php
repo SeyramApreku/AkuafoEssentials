@@ -67,6 +67,7 @@ include __DIR__ . '/../layout/admin_header.php';
         <p><span style="color:var(--muted-foreground)">Payment method:</span> <?= e($order['pay_method'] ?? '-') ?></p>
         <p><span style="color:var(--muted-foreground)">Payment status:</span> <?= e($nice($order['payment_status'] ?? '')) ?></p>
         <p><span style="color:var(--muted-foreground)">Subtotal:</span> <?= money($order['subtotal'] ?? 0) ?></p>
+        <?php if ($a = order_address_line($order)): ?><p class="md:col-span-2"><span style="color:var(--muted-foreground)">Deliver to:</span> <?= e($a) ?><?= !empty($order['delivery_notes']) ? ' · <em>' . e($order['delivery_notes']) . '</em>' : '' ?></p><?php endif; ?>
         <p><span style="color:var(--muted-foreground)">Delivery area:</span> <?= e($order['delivery_zone'] ?? '-') ?></p>
         <p><span style="color:var(--muted-foreground)">Delivery fee:</span> <?= money(($order['delivery'] ?? 0) + ($order['delivery_credit'] ?? 0)) ?></p>
         <p><span style="color:var(--muted-foreground)">Covered by membership:</span> <?= money($order['delivery_credit'] ?? 0) ?></p>

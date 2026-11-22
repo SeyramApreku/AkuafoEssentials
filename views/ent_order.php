@@ -15,7 +15,7 @@ $noticeH  = ent_order_notice_hours($order['id']);
 $earliest = ent_earliest_date($noticeH)->format('Y-m-d');
 $latest   = (new DateTime('today'))->modify('+' . ENT_BOOK_AHEAD_DAYS . ' days')->format('Y-m-d');
 $items    = $orders->items($order['id']);
-$msg      = $_SESSION['ent_order_msg'] ?? null; unset($_SESSION['ent_order_msg']);
+$pageMsg      = $_SESSION['ent_order_msg'] ?? null; unset($_SESSION['ent_order_msg']);
 $pageTitle = 'Your event order ' . $order['ref'] . ' | Akuafo & Essentials';
 include __DIR__ . '/layout/header.php';
 $box = 'w-full px-4 py-3 text-sm border outline-none bg-transparent';
@@ -24,7 +24,7 @@ $box = 'w-full px-4 py-3 text-sm border outline-none bg-transparent';
   <a href="<?= url('views/orders.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">&larr; My orders</a>
   <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--accent)">Entertaining order</p>
   <h1 class="font-display text-3xl font-light mb-6"><?= e($order['ref']) ?></h1>
-  <?php if ($msg): ?><p class="text-sm mb-6 p-3" style="background:var(--muted);color:<?= $msg[0] ? 'var(--primary)' : 'var(--accent)' ?>"><?= e($msg[1]) ?></p><?php endif; ?>
+  <?php if ($pageMsg): ?><p class="text-sm mb-6 p-3" style="background:var(--muted);color:<?= $pageMsg[0] ? 'var(--primary)' : 'var(--accent)' ?>"><?= e($pageMsg[1]) ?></p><?php endif; ?>
 
   <div class="text-sm mb-8 p-4 border space-y-1" style="border-color:var(--border)">
     <p><span style="color:var(--muted-foreground)">Event:</span> <?= e(date('D j M Y', strtotime($order['delivery_date']))) ?>, <?= e($order['time_window']) ?></p>

@@ -40,6 +40,7 @@ $qs = fn($extra) => '?' . http_build_query(array_filter(['when' => $when, 'statu
         <p><span style="color:var(--muted-foreground)">Customer:</span> <?php if ($o['user_id']): ?><a class="underline" href="admin_customers.php?id=<?= (int)$o['user_id'] ?>"><?= e($o['customer_name'] ?? '#' . $o['user_id']) ?></a><?php else: ?>-<?php endif; ?></p>
         <p><span style="color:var(--muted-foreground)">Phone:</span> <?= e($o['phone'] ?: ($o['customer_contact'] ?? '-')) ?></p>
         <p><span style="color:var(--muted-foreground)">Area:</span> <?= e($o['delivery_zone'] ?? '-') ?></p>
+        <?php if ($a = order_address_line($o)): ?><p class="md:col-span-2"><span style="color:var(--muted-foreground)">Deliver to:</span> <?= e($a) ?><?= !empty($o['delivery_notes']) ? ' · <em>' . e($o['delivery_notes']) . '</em>' : '' ?></p><?php endif; ?>
         <p><span style="color:var(--muted-foreground)">Event address:</span> <?= e($o['event_address'] ?: 'Usual address in area') ?></p>
         <p><span style="color:var(--muted-foreground)">Status:</span> <?= e($nice($o['status'])) ?></p>
         <p><span style="color:var(--muted-foreground)">Payment:</span> <?= e($nice($o['payment_status'])) ?> · <?= e($o['paystack_reference'] ?? '-') ?></p>

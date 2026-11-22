@@ -4,21 +4,48 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');   // never show errors on screen
 ini_set('log_errors', '1');       // still write them to the log
 
-// TEMPORARY: set to true to see the real error message while testing on the server.
-// Set it back to false before real users visit the site.
-const DEBUG_MODE = true;
+ini_set('html_errors', '0');
+
+// Visitors never see technical error details. Every error gets a short reference code that is
+// written to the PHP error log together with the full details, so it can be looked up later.
+function friendly_error_page($ref, $schemaProblem = false)
+{
+    if (!headers_sent()) http_response_code(500);
+    $msg = "Sorry, something went wrong. Please try again in a moment. (Reference $ref)";
+    foreach (headers_list() as $h) {
+        if (stripos($h, 'application/json') !== false) { echo json_encode(['success' => false, 'message' => $msg]); return; }
+    }
+    $admin = (int)($_SESSION['user_role'] ?? 0) === 1;
+    $base  = defined('BASE_URL') ? BASE_URL : '';
+    echo '<div style="max-width:520px;margin:12vh auto;padding:32px;font-family:Arial,sans-serif;background:#FAF7F0;border:1px solid #D5CBBA;color:#1A1916;text-align:center">'
+       . '<p style="font-family:Georgia,serif;font-size:26px;margin:0 0 12px">Something went wrong</p>'
+       . '<p style="font-size:14px;color:#6B6050;line-height:1.6;margin:0 0 20px">Sorry about that. Please go back and try again in a moment. If it keeps happening, contact us and quote reference <strong>' . $ref . '</strong>.</p>'
+       // A missing table/column means the database hasn't been updated yet: point admins (only) to the fix.
+       . ($admin && $schemaProblem ? '<p style="font-size:14px;margin:0 0 20px;padding:12px;background:#E9D9A8">Admin: the database needs updating. <a href="' . htmlspecialchars($base) . '/views/admin/admin_setup.php" style="color:#B24008">Open Database update</a> and click <strong>Update database</strong>.</p>' : '')
+       . '<a href="' . htmlspecialchars($base) . '/index.php" style="display:inline-block;background:#2B4A12;color:#F4EFE4;padding:12px 26px;text-decoration:none;font-size:14px">Back to the shop</a></div>';
+}
 
 set_exception_handler(function ($e) {
-    error_log($e);
-    http_response_code(500);
-    $msg = DEBUG_MODE ? 'DEBUG: ' . $e->getMessage() : 'Something went wrong. Please try again.';
-    foreach (headers_list() as $h) {
-        if (stripos($h, 'application/json') !== false) {
-            echo json_encode(['success' => false, 'message' => $msg]);
-            return;
-        }
-    }
-    echo $msg;
+    $ref = strtoupper(bin2hex(random_bytes(3)));
+    error_log("[error $ref] " . $e);
+    friendly_error_page($ref, $e instanceof PDOException && in_array($e->getCode(), ['42S02', '42S22'], true));
+});
+
+// Warnings and notices: log them, never print them (even if the server's php.ini says display_errors=On).
+set_error_handler(function ($no, $str, $file, $line) {
+    if (!(error_reporting() & $no)) return true;   // silenced with @
+    error_log("PHP warning: $str in $file:$line");
+    return true;
+});
+
+// Fatal errors can't be caught by the handlers above: show the same friendly page instead of PHP's message.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR], true)) return;
+    $ref = strtoupper(bin2hex(random_bytes(3)));
+    error_log("[error $ref] Fatal: {$e['message']} in {$e['file']}:{$e['line']}");
+    while (ob_get_level()) ob_end_clean();
+    friendly_error_page($ref);
 });
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -158,6 +185,22 @@ function min_order()               { return (float)app_setting('min_order', 80);
 function free_delivery_threshold() { return (float)app_setting('free_delivery_threshold', 500); }   // 0 = no free delivery
 function order_cutoff_time()       { return (string)app_setting('order_cutoff_time', '20:00'); }   // order by this time for next-day delivery
 function zone_day_names()          { return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; }
+
+// GhanaPostGPS digital address: 2 letters, then 3 or 4 digits, then 4 digits (GA-123-4567, GA-1234-5678).
+// Returns the tidy uppercase form, or null if it isn't valid. Accepts spaces or missing dashes.
+function normalize_gps($s)
+{
+    $s = strtoupper(preg_replace('/[\s.]+/', '', (string)$s));
+    // Dashes optional: GA1234567 => GA-123-4567, GA12345678 => GA-1234-5678.
+    return preg_match('/^([A-Z]{2})-?(\d{3,4})-?(\d{4})$/', $s, $m) ? "$m[1]-$m[2]-$m[3]" : null;
+}
+
+// "GA-123-4567, Osu · near Shell, Oxford St" for an order (empty for orders placed before saved addresses).
+function order_address_line($o)
+{
+    if (empty($o['gps_address'])) return '';
+    return $o['gps_address'] . ', ' . $o['area_name'] . (!empty($o['landmark']) ? ' · near ' . $o['landmark'] : '');
+}
 
 // Active zones only: an inactive zone disappears from checkout.
 function delivery_zones() { return (new Database())->fetchAll('SELECT id, name, fee, delivery_days FROM aku_delivery_zones WHERE is_active = 1 ORDER BY name'); }

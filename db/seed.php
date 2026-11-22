@@ -1,5 +1,7 @@
 <?php
-// Run once after importing schema.sql:  php db/seed.php   (or open /db/seed.php in the browser)
+// Run once after importing schema.sql, from the command line only:  php db/seed.php
+// (Blocked in the browser: it overwrites products, so nobody visiting the site may run it.)
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Forbidden'); }
 require_once __DIR__ . '/../core/core.php';
 $db = new Database();
 $j = fn($v) => json_encode($v, JSON_UNESCAPED_UNICODE);

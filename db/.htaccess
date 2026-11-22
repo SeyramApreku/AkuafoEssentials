@@ -1,0 +1,9 @@
+# SQL files and seed scripts are for admins only, never for website visitors.
+# (The admin "Database update" page reads these files from PHP, which this does not block.)
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

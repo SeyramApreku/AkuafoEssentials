@@ -8,9 +8,11 @@ class OrderClass extends Database
         $ref = 'AK' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
         try {
             $this->begin();
-            $this->execute('INSERT INTO aku_orders (ref,subtotal,delivery,pass_fee,total,delivery_date,time_window,pay_method,phone,email,user_id,delivery_zone,delivery_credit,order_type,event_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            $this->execute('INSERT INTO aku_orders (ref,subtotal,delivery,pass_fee,total,delivery_date,time_window,pay_method,phone,email,user_id,delivery_zone,delivery_credit,order_type,event_address,
+                                zone_id,address_id,gps_address,area_name,landmark,delivery_notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                 [$ref, $data['subtotal'], $data['delivery'], $data['pass_fee'], $data['total'], $data['date'], $data['window'], $data['method'], $data['phone'], $data['email'], $data['user_id'], $data['zone'], $data['credit'],
-                 $data['order_type'] ?? 'standard', $data['event_address'] ?? null]);
+                 $data['order_type'] ?? 'standard', $data['event_address'] ?? null,
+                 $data['zone_id'] ?? null, $data['address_id'] ?? null, $data['gps_address'] ?? null, $data['area_name'] ?? null, $data['landmark'] ?? null, $data['delivery_notes'] ?? null]);
             $orderId = $this->lastId();
             foreach ($items as $i) {
                 $this->execute('INSERT INTO aku_order_items (order_id,item_key,name,type,price,qty,detail) VALUES (?,?,?,?,?,?,?)',
@@ -51,7 +53,13 @@ class OrderClass extends Database
     public function byPaystackRef($p) { return $this->fetchOne('SELECT * FROM aku_orders WHERE paystack_reference = ?', [$p]); }
     public function setPaystackRef($ref, $p) { $this->execute('UPDATE aku_orders SET paystack_reference = ? WHERE ref = ?', [$p, $ref]); }
     // Payment confirmed: grocery orders become 'paid', entertaining orders become 'received' (their own status flow).
-    public function markPaid($id) { $this->execute("UPDATE aku_orders SET payment_status = 'paid', status = IF(status = 'pending', IF(order_type = 'entertaining', 'received', 'paid'), status) WHERE id = ?", [$id]); }
+    public function markPaid($id)
+    {
+        $this->markPaidOnly($id);
+        require_once __DIR__ . '/inventory_class.php';
+        (new InventoryClass())->deductForOrder($id);   // stock comes off once the money is in
+    }
+    private function markPaidOnly($id) { $this->execute("UPDATE aku_orders SET payment_status = 'paid', status = IF(status = 'pending', IF(order_type = 'entertaining', 'received', 'paid'), status) WHERE id = ?", [$id]); }
     // Entertaining orders: customer changes and cancellations.
     public function updateEvent($id, $date, $window, $address)
     {

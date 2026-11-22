@@ -21,6 +21,7 @@ if (in_array($status, ['paid', 'shipped', 'delivered'], true) && $order['payment
 }
 
 $orders->setStatus($id, $status);
+if ($status === 'cancelled') { require_once __DIR__ . '/../classes/inventory_class.php'; (new InventoryClass())->restoreForOrder($id); }   // stock goes back on the shelf
 $emailed = send_status_email($order, $status);   // shipped / delivered / cancelled
 $_SESSION['admin_msg'] = 'Order status updated to ' . ucfirst($status) . '.' . ($emailed ? ' The customer has been emailed.' : '');
 redirect($back);
