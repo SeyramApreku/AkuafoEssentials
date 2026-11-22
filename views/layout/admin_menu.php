@@ -1,6 +1,7 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
 $tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items', 'admin_ent_orders.php' => 'ent_orders', 'admin_ent_capacity.php' => 'ent_capacity', 'admin_ratings.php' => 'ratings'][$script] ?? null);
+if ($script === 'admin_delivery.php') $tCur = ($_GET['tab'] ?? '') === 'settings' ? 'delivery_settings' : 'delivery_zones';
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
     ['Products',     'views/admin/admin_manage.php?t=products',   'products'],
@@ -17,7 +18,8 @@ $links = [
     ['Event Capacity', 'views/admin/admin_ent_capacity.php', 'ent_capacity'],
     ['Orders',       'views/admin/admin_orders.php',        'orders'],
     ['Customers',    'views/admin/admin_customers.php',     'customers'],
-    ['Delivery Zones', 'views/admin/admin_manage.php?t=delivery_zones', 'delivery_zones'],
+    ['Delivery Zones', 'views/admin/admin_delivery.php?tab=zones', 'delivery_zones'],
+    ['Delivery Settings', 'views/admin/admin_delivery.php?tab=settings', 'delivery_settings'],
     ['View Store',   'index.php',                           null],
 ];
 ?>

@@ -1,6 +1,6 @@
 <?php
 $items = $cartObj->items(); $sub = $cartObj->subtotal(); $del = $cartObj->deliveryCost(); $pass = $cartObj->hasPass();
-$belowMin = $items && $sub < MIN_ORDER;
+$belowMin = $items && $sub < min_order();
 $isEvent = $cartObj->kind() === 'entertaining';
 $cartNotice = $_SESSION['cart_notice'] ?? null; unset($_SESSION['cart_notice']);
 function cart_btn($act, $id, $label, $here, $cls = '') {
@@ -49,7 +49,7 @@ function cart_btn($act, $id, $label, $here, $cls = '') {
   </div>
   <?php if ($items): ?>
   <div class="px-5 py-4 border-t" style="border-color:var(--border)">
-    <?php if ($belowMin): ?><p class="text-xs mb-3 p-2.5" style="background:var(--muted);color:var(--accent)">Minimum order is <?= money(MIN_ORDER) ?>. Add <?= money(MIN_ORDER - $sub) ?> more to unlock delivery.</p><?php endif; ?>
+    <?php if ($belowMin): ?><p class="text-xs mb-3 p-2.5" style="background:var(--muted);color:var(--accent)">Minimum order is <?= money(min_order()) ?>. Add <?= money(min_order() - $sub) ?> more to unlock delivery.</p><?php endif; ?>
     <div class="space-y-1.5 mb-4 text-sm">
       <div class="flex justify-between"><span style="color:var(--muted-foreground)">Subtotal</span><span><?= money($sub) ?></span></div>
       <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span><?= $pass ? 'Free (Pass)' : ($belowMin ? '-' : money(DELIVERY_FEE)) ?></span></div>

@@ -32,6 +32,6 @@ unset($_SESSION['checkout_old']);
 
 $ref = place_order($date, $window, 'paystack', $phone, $zone,   // email comes from the account, not the form
                    ['order_type' => $isEvent ? 'entertaining' : 'standard', 'event_address' => $isEvent && $address !== '' ? $address : null]);
-if (!$ref) { $_SESSION['checkout_errors'] = ['We could not place your order. Check the minimum order of ' . money(MIN_ORDER) . ' and try again.']; redirect(url('views/checkout.php')); }
+if (!$ref) { $_SESSION['checkout_errors'] = ['We could not place your order. Check the minimum order of ' . money(min_order()) . ' and try again.']; redirect(url('views/checkout.php')); }
 
 redirect(url('views/order_summary.php?ref=' . $ref));

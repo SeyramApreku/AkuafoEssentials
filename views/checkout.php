@@ -22,9 +22,9 @@ if ($isEvent) {
 }
 ?>
 <div class="max-w-2xl mx-auto px-6 py-12">
-<?php if (!$items || $sub < MIN_ORDER): ?>
+<?php if (!$items || $sub < min_order()): ?>
   <div class="text-center py-12">
-    <p class="font-display text-2xl font-light mb-4"><?= $items ? 'Minimum order is ' . money(MIN_ORDER) : 'Your order is empty' ?></p>
+    <p class="font-display text-2xl font-light mb-4"><?= $items ? 'Minimum order is ' . money(min_order()) : 'Your order is empty' ?></p>
     <a href="<?= url('views/shop.php') ?>" class="text-sm" style="color:var(--primary)">← Back to shop</a>
   </div>
 <?php else: ?>

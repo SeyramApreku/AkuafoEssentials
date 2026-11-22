@@ -29,8 +29,7 @@ require_once __DIR__ . '/../settings/db_class.php';
 // Server: define('BASE_URL', '/~elisa.okyere/akuafo');
 if (!defined('BASE_URL')) define('BASE_URL', '/akuafo');
 
-const MIN_ORDER = 80;
-const DELIVERY_FEE = 12;
+const DELIVERY_FEE = 12;   // shown in the cart drawer until checkout knows the zone (replaced in D4)
 const PASS_PRICE = 49;
 
 function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
@@ -145,7 +144,23 @@ function member_tier()
     return $t;
 }
 
-function delivery_zones() { return (new Database())->fetchAll('SELECT id, name, fee FROM aku_delivery_zones ORDER BY name'); }
+// ---------- Site settings (aku_settings), editable in Admin > Delivery Settings ----------
+function app_setting($name, $default)
+{
+    static $cache = null;
+    if ($cache === null) {
+        try { $cache = array_column((new Database())->fetchAll('SELECT name, value FROM aku_settings'), 'value', 'name'); }
+        catch (Throwable $e) { $cache = []; }   // table not created yet: use the defaults
+    }
+    return $cache[$name] ?? $default;
+}
+function min_order()               { return (float)app_setting('min_order', 80); }
+function free_delivery_threshold() { return (float)app_setting('free_delivery_threshold', 500); }   // 0 = no free delivery
+function order_cutoff_time()       { return (string)app_setting('order_cutoff_time', '20:00'); }   // order by this time for next-day delivery
+function zone_day_names()          { return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; }
+
+// Active zones only: an inactive zone disappears from checkout.
+function delivery_zones() { return (new Database())->fetchAll('SELECT id, name, fee, delivery_days FROM aku_delivery_zones WHERE is_active = 1 ORDER BY name'); }
 
 function delivery_credit_left()
 {
@@ -162,7 +177,7 @@ function delivery_credit_left()
 
 function delivery_quote($zoneId)
 {
-    $z = (new Database())->fetchOne('SELECT id, name, fee FROM aku_delivery_zones WHERE id = ?', [(int)$zoneId]);
+    $z = (new Database())->fetchOne('SELECT id, name, fee FROM aku_delivery_zones WHERE id = ? AND is_active = 1', [(int)$zoneId]);
     if (!$z) return null;
     $fee = (float)$z['fee'];
     $credit = min($fee, delivery_credit_left());
@@ -226,7 +241,6 @@ function admin_tables()
                        'choices' => ['type' => ['Restaurant', 'Hotel', 'Catering', 'Cafe', 'Bar', 'Lodge']]],
         'categories' => ['label' => 'Categories'],
         'regions'    => ['label' => 'Regions'],
-        'delivery_zones' => ['label' => 'Delivery zones'],
         // Entertaining section (items themselves have their own page: views/admin/admin_ent_items.php)
         'ent_occasions'  => ['label' => 'Occasions',        'dir' => 'entertaining', 'order' => 'sort_order, id'],
         'ent_categories' => ['label' => 'Event categories', 'dir' => 'entertaining', 'order' => 'sort_order, id'],

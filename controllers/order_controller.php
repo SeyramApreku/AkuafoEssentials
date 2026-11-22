@@ -8,7 +8,7 @@ require_once __DIR__ . '/cart_controller.php';
 function place_order($date, $window, $method, $phone, $zoneId, $extra = [])
 {
     $cart = cart();
-    if (!$cart->items() || $cart->subtotal() < MIN_ORDER) return false;
+    if (!$cart->items() || $cart->subtotal() < min_order()) return false;
     $q = delivery_quote($zoneId);
     if (!$q) return false;
     $account = (new OrderClass())->customer(customer_id());

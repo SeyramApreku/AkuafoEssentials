@@ -9,7 +9,7 @@ class CartClass
     public function deliveryCost()
     {
         if ($this->hasPass()) return 0;
-        return $this->subtotal() >= MIN_ORDER ? DELIVERY_FEE : 0;
+        return $this->subtotal() >= min_order() ? DELIVERY_FEE : 0;
     }
     public function add($item)
     {

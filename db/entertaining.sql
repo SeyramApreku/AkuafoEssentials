@@ -1,26 +1,27 @@
 -- =====================================================================
 -- Akuafo & Essentials: Entertaining section (E1)
--- Run once, in phpMyAdmin (SQL tab) on the database the site uses.
+-- In phpMyAdmin: FIRST click your database in the left list, THEN open the SQL tab,
+-- paste this whole file and click Go. Safe to run more than once.
 -- Prices, serves and notice periods below are placeholders: edit them in
 -- Admin > Menu > Entertaining items. Images can be replaced there too.
 -- =====================================================================
 
 -- ---------- Tables ----------
-CREATE TABLE aku_ent_occasions (
+CREATE TABLE IF NOT EXISTS aku_ent_occasions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80) NOT NULL UNIQUE,
   image VARCHAR(255) NULL,
   sort_order INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE aku_ent_categories (
+CREATE TABLE IF NOT EXISTS aku_ent_categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80) NOT NULL UNIQUE,
   image VARCHAR(255) NULL,
   sort_order INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE aku_ent_items (
+CREATE TABLE IF NOT EXISTS aku_ent_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   category_id INT NOT NULL,
   name VARCHAR(120) NOT NULL,
@@ -39,7 +40,7 @@ CREATE TABLE aku_ent_items (
   CONSTRAINT fk_ent_item_cat FOREIGN KEY (category_id) REFERENCES aku_ent_categories(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE aku_ent_item_occasions (
+CREATE TABLE IF NOT EXISTS aku_ent_item_occasions (
   item_id INT NOT NULL,
   occasion_id INT NOT NULL,
   PRIMARY KEY (item_id, occasion_id),
@@ -48,7 +49,7 @@ CREATE TABLE aku_ent_item_occasions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Capacity overrides and blocked-out dates (used from E4/E5)
-CREATE TABLE aku_ent_date_rules (
+CREATE TABLE IF NOT EXISTS aku_ent_date_rules (
   id INT AUTO_INCREMENT PRIMARY KEY,
   rule_date DATE NOT NULL,
   time_window VARCHAR(40) NOT NULL DEFAULT '',  -- '' = the whole day
@@ -58,22 +59,32 @@ CREATE TABLE aku_ent_date_rules (
   UNIQUE KEY uq_rule (rule_date, time_window)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE aku_settings (
+CREATE TABLE IF NOT EXISTS aku_settings (
   name VARCHAR(50) PRIMARY KEY,
   value VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-INSERT INTO aku_settings (name, value) VALUES ('ent_slot_capacity', '5'), ('ent_change_cutoff_hours', '48');
+INSERT IGNORE INTO aku_settings (name, value) VALUES ('ent_slot_capacity', '5'), ('ent_change_cutoff_hours', '48');
 
 -- Orders: entertaining orders sit apart from grocery/box orders (used from E4)
-ALTER TABLE aku_orders
-  ADD COLUMN order_type VARCHAR(20) NOT NULL DEFAULT 'standard',
-  ADD COLUMN event_address VARCHAR(255) NULL,
-  ADD COLUMN cancelled_at DATETIME NULL,
-  ADD COLUMN refund_status VARCHAR(20) NULL,
-  ADD INDEX idx_type_date (order_type, delivery_date);
+-- (each column is only added if it is not there yet, so re-running is safe)
+SET @q = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'aku_orders' AND column_name = 'order_type') = 0,
+  'ALTER TABLE aku_orders ADD COLUMN order_type VARCHAR(20) NOT NULL DEFAULT ''standard''', 'DO 0');
+PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;
+SET @q = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'aku_orders' AND column_name = 'event_address') = 0,
+  'ALTER TABLE aku_orders ADD COLUMN event_address VARCHAR(255) NULL', 'DO 0');
+PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;
+SET @q = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'aku_orders' AND column_name = 'cancelled_at') = 0,
+  'ALTER TABLE aku_orders ADD COLUMN cancelled_at DATETIME NULL', 'DO 0');
+PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;
+SET @q = IF((SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'aku_orders' AND column_name = 'refund_status') = 0,
+  'ALTER TABLE aku_orders ADD COLUMN refund_status VARCHAR(20) NULL', 'DO 0');
+PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;
+SET @q = IF((SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'aku_orders' AND index_name = 'idx_type_date') = 0,
+  'ALTER TABLE aku_orders ADD INDEX idx_type_date (order_type, delivery_date)', 'DO 0');
+PREPARE s FROM @q; EXECUTE s; DEALLOCATE PREPARE s;
 
 -- ---------- Occasions & categories ----------
-INSERT INTO aku_ent_occasions (id, name, image, sort_order) VALUES
+INSERT IGNORE INTO aku_ent_occasions (id, name, image, sort_order) VALUES
  (1, 'Christmas',      'images/entertaining/placeholder.svg', 1),
  (2, 'Weddings',       'images/entertaining/placeholder.svg', 2),
  (3, 'Funerals',       'images/entertaining/placeholder.svg', 3),
@@ -82,7 +93,7 @@ INSERT INTO aku_ent_occasions (id, name, image, sort_order) VALUES
  (6, 'Office parties', 'images/entertaining/placeholder.svg', 6),
  (7, 'Gatherings',     'images/entertaining/placeholder.svg', 7);
 
-INSERT INTO aku_ent_categories (id, name, image, sort_order) VALUES
+INSERT IGNORE INTO aku_ent_categories (id, name, image, sort_order) VALUES
  (1, 'Platters',              'images/entertaining/placeholder.svg', 1),
  (2, 'Small chops',           'images/entertaining/placeholder.svg', 2),
  (3, 'Jollof & rice trays',   'images/entertaining/placeholder.svg', 3),
@@ -94,7 +105,7 @@ INSERT INTO aku_ent_categories (id, name, image, sort_order) VALUES
  (9, 'Bulk produce',          'photo-1607305387299-a3d9611cd469',    9);
 
 -- ---------- Items (placeholder prices: edit in the admin) ----------
-INSERT INTO aku_ent_items (id, category_id, name, description, contents, price, serves, notice_hours, dietary, badge, image, featured) VALUES
+INSERT IGNORE INTO aku_ent_items (id, category_id, name, description, contents, price, serves, notice_hours, dietary, badge, image, featured) VALUES
  (1,  1, 'Grand Party Platter', 'A generous sharing platter of grilled chicken wings, kebabs, spring rolls, plantain chips and dips, arranged ready to serve.', NULL, 450, 15, 48, 'spicy', 'Bestseller', 'images/entertaining/placeholder.svg', 1),
  (2,  1, 'Garden Crudites & Dips Platter', 'Crisp seasonal vegetables from our farmers with a groundnut dip and a pepper-and-tomato salsa.', NULL, 220, 10, 48, 'vegetarian,vegan,contains_nuts', NULL, 'images/entertaining/placeholder.svg', 0),
  (3,  2, 'Small Chops Box', 'The party classic: spring rolls, samosas, meat pies, puff-puff and peppered chicken. Packed in a presentation box.', NULL, 380, 20, 48, 'spicy', 'Party favourite', 'images/entertaining/placeholder.svg', 1),
@@ -123,7 +134,7 @@ INSERT INTO aku_ent_items (id, category_id, name, description, contents, price, 
  (24, 9, 'Pepper Sack', '5kg, Bolgatanga', NULL, 75,  NULL, 72, 'vegetarian,vegan,spicy', NULL, 'photo-1583119022894-919a68a3d0e3', 0);
 
 -- Which occasions each item appears under (1 Christmas, 2 Weddings, 3 Funerals, 4 Birthdays, 5 Outdoorings, 6 Office parties, 7 Gatherings)
-INSERT INTO aku_ent_item_occasions (item_id, occasion_id) VALUES
+INSERT IGNORE INTO aku_ent_item_occasions (item_id, occasion_id) VALUES
  (1,2),(1,4),(1,6),(1,7),
  (2,4),(2,6),(2,7),
  (3,1),(3,2),(3,3),(3,4),(3,5),(3,6),(3,7),
