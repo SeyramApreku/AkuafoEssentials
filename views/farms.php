@@ -21,8 +21,8 @@ if ($farmer): ?>
       </div>
       <p class="text-sm leading-relaxed mb-8" style="color:var(--muted-foreground)"><?= e($farmer['story']) ?></p>
       <p class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted-foreground)">Grows for us</p>
-      <div class="flex flex-wrap gap-2 mb-8"><?php foreach ($farmer['produce'] as $p): ?><span class="text-xs px-3 py-1.5 font-medium" style="background:var(--muted)"><?= e($p) ?></span><?php endforeach; ?></div>
-      <a href="<?= url('views/shop.php') ?>" class="text-sm font-medium px-5 py-2.5 inline-block btn-primary">Shop their produce →</a>
+      <div class="flex flex-wrap gap-2 mb-8"><?php foreach ($farmer['produce'] as $p): ?><a href="<?= e(produce_url($p)) ?>" class="text-xs px-3 py-1.5 font-medium underline-offset-2 hover:underline" style="background:var(--muted)" title="Shop <?= e($p) ?>"><?= e($p) ?> →</a><?php endforeach; ?></div>
+      <a href="<?= url('views/shop.php?farmer=' . urlencode($farmer['name'])) ?>" class="text-sm font-medium px-5 py-2.5 inline-block btn-primary">Shop their produce →</a>
     </div>
   </div>
 </div>

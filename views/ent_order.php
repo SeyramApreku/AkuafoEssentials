@@ -55,7 +55,7 @@ $box = 'w-full px-4 py-3 text-sm border outline-none bg-transparent';
     </form>
 
     <form method="post" action="<?= url('actions/ent_order_action.php') ?>" class="p-5 border" style="border-color:var(--border)"
-          onsubmit="return confirm('Cancel this order? We will refund <?= e(money($order['total'])) ?> to your original payment method.');">
+          data-confirm="Cancel this order? We will refund <?= e(money($order['total'])) ?> to your original payment method." data-confirm-yes="Yes, cancel and refund">
       <input type="hidden" name="act" value="cancel"><input type="hidden" name="ref" value="<?= e($order['ref']) ?>">
       <h2 class="font-display text-xl mb-2">Cancel order</h2>
       <p class="text-xs mb-4" style="color:var(--muted-foreground)">We'll refund <?= money($order['total']) ?> through Paystack to the card or mobile money account you paid with. Refunds usually arrive within 5 to 10 working days.</p>

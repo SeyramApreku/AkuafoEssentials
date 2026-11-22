@@ -48,7 +48,7 @@ $act = url('actions/address_action.php');
             <button class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border)">Make default</button></form>
           <?php endif; ?>
           <a href="?edit=<?= (int)$a['id'] ?><?= $nextQs ?>" class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border)">Edit</a>
-          <form method="post" action="<?= $act ?>" onsubmit="return confirm('Delete this address?')"><input type="hidden" name="act" value="delete"><input type="hidden" name="id" value="<?= (int)$a['id'] ?>"><input type="hidden" name="next" value="<?= e($back) ?>">
+          <form method="post" action="<?= $act ?>" data-confirm="Delete this address?" data-confirm-yes="Delete address"><input type="hidden" name="act" value="delete"><input type="hidden" name="id" value="<?= (int)$a['id'] ?>"><input type="hidden" name="next" value="<?= e($back) ?>">
             <button class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border);color:#b3261e">Delete</button></form>
         </div>
       </div>

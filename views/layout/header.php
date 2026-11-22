@@ -14,6 +14,15 @@ $here = $_SERVER['REQUEST_URI'];
   <title><?= e($pageTitle ?? 'Akuafo & Essentials') ?></title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="<?= url('css/style.css') ?>">
+  <script>
+  // Security: add this session's CSRF token to every POST form (checked in core/core.php).
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (f) {
+      if (f.querySelector('input[name="csrf"]')) return;
+      var i = document.createElement('input'); i.type = 'hidden'; i.name = 'csrf'; i.value = <?= json_encode(csrf_token()) ?>; f.appendChild(i);
+    });
+  });
+  </script>
 </head>
 <body class="min-h-screen">
 <header class="sticky top-0 z-30 border-b" style="background:var(--background);border-color:var(--border)">
@@ -49,7 +58,7 @@ $here = $_SERVER['REQUEST_URI'];
             <a href="<?= url('views/orders.php') ?>" class="account-item" role="menuitem">My orders</a>
             <a href="<?= url('views/addresses.php') ?>" class="account-item" role="menuitem">My addresses</a>
             <a href="<?= url('views/membership.php') ?>" class="account-item" role="menuitem"><?= $mt ? 'My membership' : 'Membership' ?></a>
-            <a href="<?= url('actions/logout_action.php') ?>" class="account-item border-t mt-1 pt-2" style="border-color:var(--border);color:var(--accent)" role="menuitem">Log out</a>
+            <form method="post" action="<?= url('actions/logout_action.php') ?>" class="border-t mt-1 pt-1" style="border-color:var(--border)"><?= csrf_field() ?><button class="account-item w-full text-left" style="color:var(--accent)" role="menuitem">Log out</button></form>
           <?php else: ?>
             <a href="<?= url('views/login.php') ?>" class="account-item" role="menuitem">Log in</a>
             <a href="<?= url('views/register.php') ?>" class="account-item" role="menuitem">Create an account</a>
@@ -85,6 +94,46 @@ $here = $_SERVER['REQUEST_URI'];
     <?php foreach (nav_items() as $path => $label): ?><a href="<?= url($path) ?>" class="block py-2 text-sm font-medium"><?= $label ?></a><?php endforeach; ?>
   </div>
 </header>
+<!-- Site-wide confirmation dialog (replaces the browser's "this site says" box).
+     Use: <form data-confirm="Delete this address?" data-confirm-yes="Delete">. Old onsubmit="return confirm('…')" forms are upgraded automatically. -->
+<div id="aku-confirm" role="dialog" aria-modal="true" aria-labelledby="aku-confirm-text" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(26,25,22,.55);align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--card);border:1px solid var(--border);padding:28px;max-width:440px;width:100%">
+    <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--accent)">Please confirm</p>
+    <p id="aku-confirm-text" class="font-display text-2xl font-light leading-snug mb-6"></p>
+    <div class="flex flex-wrap gap-3">
+      <button type="button" id="aku-confirm-yes" class="px-6 py-3 text-sm font-medium btn-primary">Yes</button>
+      <button type="button" id="aku-confirm-no" class="px-6 py-3 text-sm font-medium border" style="border-color:var(--border)">No, go back</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  window.akuConfirm = true;   // admin_menu.php uses this dialog instead of its own when both are on a page
+  var box = document.getElementById('aku-confirm'), text = document.getElementById('aku-confirm-text'),
+      yes = document.getElementById('aku-confirm-yes'), no = document.getElementById('aku-confirm-no'), pending = null, opener = null;
+  function close() { box.style.display = 'none'; pending = null; if (opener) opener.focus(); }
+  // Upgrade old forms: onsubmit="return confirm('message')"  ->  data-confirm="message"
+  document.addEventListener('DOMContentLoaded', function () {   // forms further down the page exist only now
+    document.querySelectorAll('form[onsubmit*="confirm("]').forEach(function (f) {
+      var m = f.getAttribute('onsubmit').match(/confirm\((['"])([\s\S]*?)\1\)/);
+      if (m) { f.setAttribute('data-confirm', m[2]); f.removeAttribute('onsubmit'); }
+    });
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f.hasAttribute || !f.hasAttribute('data-confirm') || f.dataset.confirmed === '1') return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    pending = f; opener = document.activeElement;
+    text.textContent = f.getAttribute('data-confirm');
+    yes.textContent = f.getAttribute('data-confirm-yes') || 'Yes, continue';
+    box.style.display = 'flex'; no.focus();
+  }, true);
+  yes.addEventListener('click', function () { if (!pending) return; var f = pending; f.dataset.confirmed = '1'; box.style.display = 'none'; f.submit(); });
+  no.addEventListener('click', close);
+  box.addEventListener('click', function (e) { if (e.target === box) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && box.style.display === 'flex') close(); });
+})();
+</script>
 <?php if (is_admin()) include __DIR__ . '/admin_menu.php'; ?>
 
 <?php include __DIR__ . '/cart_drawer.php'; ?>

@@ -3,12 +3,13 @@ require_once __DIR__ . '/../settings/db_class.php';
 
 class CatalogClass extends Database
 {
-    public function products($category = 'All', $region = 'All Regions')
+    public function products($category = 'All', $region = 'All Regions', $farmer = '')
     {
         $sql = 'SELECT * FROM aku_products WHERE 1=1';
         $p = [];
         if ($category !== 'All') { $sql .= ' AND category = ?'; $p[] = $category; }
         if ($region !== 'All Regions') { $sql .= ' AND region = ?'; $p[] = $region; }
+        if ($farmer !== '') { $sql .= ' AND farmer = ?'; $p[] = $farmer; }   // "Shop their produce" from a farmer's page
         return $this->fetchAll($sql . ' ORDER BY id', $p);
     }
     public function product($id) { return $this->fetchOne('SELECT * FROM aku_products WHERE id = ?', [$id]); }

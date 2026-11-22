@@ -31,6 +31,7 @@ $nextQs = $next ? '?next=' . urlencode($next) : '';
     <h1 class="font-display text-3xl font-light mb-6">Welcome</h1>
     <?php if ($fromEmail): ?><p class="text-sm mb-4 p-3" style="background:var(--muted)">For your security, please log in to continue.</p><?php elseif ($next === 'views/checkout.php'): ?><p class="text-sm mb-4 p-3" style="background:var(--muted)">Log in or create an account to complete your order. Your cart is saved.</p><?php endif; ?>
     <form id="loginForm" onsubmit="event.preventDefault(); loginCustomer()" class="flex flex-col gap-3">
+      <?= csrf_field() ?>
       <input type="hidden" name="next" value="<?= e($next) ?>">
       <input type="email" id="customer_email" name="customer_email" placeholder="Email" class="px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
       <input type="password" id="customer_pass" name="customer_pass" placeholder="Password" class="px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">

@@ -22,6 +22,7 @@ $inputStyle = 'px-4 py-3 text-sm border outline-none bg-transparent';
     </div>
     <h1 class="font-display text-3xl font-light mb-6">Create your account</h1>
     <form id="registerForm" onsubmit="event.preventDefault(); registerCustomer()" class="flex flex-col gap-3">
+      <?= csrf_field() ?>
       <input type="text" id="customer_name" name="customer_name" placeholder="Full name" class="<?= $inputStyle ?>" style="border-color:var(--border)">
       <input type="email" id="customer_email" name="customer_email" placeholder="Email" class="<?= $inputStyle ?>" style="border-color:var(--border)">
       <input type="password" id="customer_pass" name="customer_pass" placeholder="Password" class="<?= $inputStyle ?>" style="border-color:var(--border)">
