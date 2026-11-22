@@ -23,18 +23,7 @@ include __DIR__ . '/layout/header.php';
     <p class="text-sm text-center py-20" style="color:var(--muted-foreground)">No produce matches your filter.</p>
   <?php else: ?>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-    <?php foreach ($products as $p): ?>
-    <a href="<?= url('views/product.php?id=' . $p['id']) ?>" class="group block">
-      <div class="aspect-square overflow-hidden mb-3 relative" style="background:var(--muted)">
-        <img src="<?= img($p['image']) ?>" alt="<?= e($p['name']) ?>" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
-        <?php if ($p['badge']): ?><span class="absolute top-2 left-2 text-xs px-2 py-0.5 font-medium" style="background:var(--accent);color:var(--accent-foreground)"><?= e($p['badge']) ?></span><?php endif; ?>
-      </div>
-      <p class="text-xs mb-0.5" style="color:var(--muted-foreground)"><?= e($p['region']) ?> · <?= e($p['farmer']) ?></p>
-      <p class="font-medium text-sm mb-0.5"><?= e($p['name']) ?></p>
-      <p class="text-xs mb-1 italic" style="color:var(--muted-foreground)"><?= e($p['twi']) ?></p>
-      <div class="flex items-center justify-between"><p class="text-sm font-display"><?= money($p['price']) ?></p><span class="text-xs" style="color:var(--muted-foreground)"><?= e($p['unit']) ?></span></div>
-    </a>
-    <?php endforeach; ?>
+    <?php foreach ($products as $p) include __DIR__ . '/layout/product_card.php'; ?>
   </div>
   <?php endif; ?>
 </div>

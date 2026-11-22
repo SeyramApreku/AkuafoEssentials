@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <!-- Placeholder image for Entertaining items. Replace each item's image from Admin > Entertaining items. -->
+  <rect width="800" height="600" fill="#EDE6D6"/>
+  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#D5CBBA" stroke-width="2"/>
+  <g fill="none" stroke="#2B4A12" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="translate(400 270)">
+    <path d="M-150 40 h300"/>
+    <path d="M-125 40 a125 125 0 0 1 250 0"/>
+    <path d="M0 -85 v-20"/>
+    <circle cx="0" cy="-115" r="10" fill="#B24008" stroke="#B24008"/>
+  </g>
+  <text x="400" y="400" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#1A1916">Akuafo <tspan fill="#B24008">&amp;</tspan> Essentials</text>
+  <text x="400" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" letter-spacing="3" fill="#6B6050">ENTERTAINING · PHOTO COMING SOON</text>
+</svg>

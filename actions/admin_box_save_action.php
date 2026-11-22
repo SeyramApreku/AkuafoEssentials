@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') redirect($back);
 
 $id = $_POST['id'] ?? '';
 $db = new Database();
-$old = $id ? $db->fetchOne("SELECT * FROM boxes WHERE id = ?", [$id]) : null;
+$old = $id ? $db->fetchOne("SELECT * FROM aku_boxes WHERE id = ?", [$id]) : null;
 if ($id && !$old) redirect($back);
 
 $name = trim($_POST['name'] ?? '');
@@ -39,7 +39,7 @@ if ($img !== null) {
 
 if ($old) {
     $set = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($data)));
-    $db->execute("UPDATE `boxes` SET $set WHERE id = ?", [...array_values($data), $id]);
+    $db->execute("UPDATE `aku_boxes` SET $set WHERE id = ?", [...array_values($data), $id]);
     $_SESSION['admin_msg'] = 'Box updated.';
     redirect($back);
 }
@@ -47,17 +47,17 @@ if ($old) {
 // New box: make a unique slug id, then default sizes
 $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($name)), '-') ?: 'box';
 $base = $slug; $n = 2;
-while ($db->fetchOne("SELECT id FROM boxes WHERE id = ?", [$slug])) $slug = $base . '-' . $n++;
+while ($db->fetchOne("SELECT id FROM aku_boxes WHERE id = ?", [$slug])) $slug = $base . '-' . $n++;
 
 $data['id'] = $slug;
 $data['contents'] = '[]';
 $names = implode(', ', array_map(fn($k) => "`$k`", array_keys($data)));
 $marks = implode(', ', array_fill(0, count($data), '?'));
-$db->execute("INSERT INTO `boxes` ($names) VALUES ($marks)", array_values($data));
+$db->execute("INSERT INTO `aku_boxes` ($names) VALUES ($marks)", array_values($data));
 
-$start = (int)($db->fetchOne("SELECT MIN(idx) AS m FROM box_sizes")['m'] ?? 0);
+$start = (int)($db->fetchOne("SELECT MIN(idx) AS m FROM aku_box_sizes")['m'] ?? 0);
 foreach ([['Small', '1-2 people'], ['Medium', '3-4 people'], ['Large', '5+ people']] as $i => [$label, $people]) {
-    $db->execute("INSERT INTO box_sizes (box_id, idx, label, description, price, items) VALUES (?, ?, ?, ?, 0, '')", [$slug, $start + $i, $label, $people]);
+    $db->execute("INSERT INTO aku_box_sizes (box_id, idx, label, description, price, items) VALUES (?, ?, ?, ?, 0, '')", [$slug, $start + $i, $label, $people]);
 }
 
 $_SESSION['admin_msg'] = 'Box added. Set its sizes and prices below.';

@@ -1,27 +1,47 @@
 <?php
+// Starts a membership payment: creates a pending membership, then sends the customer to Paystack.
 require_once __DIR__ . '/../core/core.php';
+require_once __DIR__ . '/../classes/membership_class.php';
+require_once __DIR__ . '/../settings/paystack_config.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') redirect(url('views/membership.php'));
 
 $tier = null;
-foreach (membership_tiers() as $t) if (strtolower($t['name']) === strtolower($_POST['tier'] ?? '')) $tier = $t;
+foreach (membership_tiers() as $t) {
+    if (strtolower($t['name']) === strtolower($_POST['tier'] ?? '')) $tier = $t;
+}
 if (!$tier) redirect(url('views/membership.php'));
 
-$back = url('views/membership_checkout.php?tier=' . strtolower($tier['name']));
-$method = $_POST['method'] ?? '';
-if (!in_array($method, ['mtn', 'vodafone', 'airteltigo', 'card'], true)) redirect($back);
+$key  = strtolower($tier['name']);
+$back = url('views/membership_checkout.php?tier=' . $key);
+require_login('views/membership_checkout.php?tier=' . $key);
 
-$phone = preg_replace('/\s+/', '', $_POST['phone'] ?? '');
-if ($method !== 'card' && !preg_match('/^0\d{9}$/', $phone)) {
-    $_SESSION['membership_errors'] = ['Enter a valid 10-digit mobile number.'];
+$memberships = new MembershipClass();
+if ($active = $memberships->activeFor(customer_id())) {
+    $_SESSION['membership_errors'] = ['You already have an active ' . ucfirst($active['tier']) . ' membership until '
+        . date('j M Y', strtotime($active['expires_at'])) . '. You can choose a new plan after it ends.'];
     redirect($back);
 }
 
-// PLACEHOLDER: no real payment happens here. Swap in Paystack before going live.
-$db = new Database();
-$db->execute("UPDATE memberships SET status = 'replaced' WHERE user_id = ? AND status = 'active'", [$_SESSION['customer_id']]);
-$db->execute(
-    'INSERT INTO memberships (user_id, tier, price, status, starts_at, expires_at) VALUES (?,?,?,?,NOW(),DATE_ADD(NOW(), INTERVAL 1 MONTH))',
-    [$_SESSION['customer_id'], strtolower($tier['name']), $tier['price'], 'active']
-);
+$customer = (new Database())->fetchOne('SELECT customer_email FROM aku_customer WHERE customer_id = ?', [customer_id()]);
+if (!$customer) redirect(url('actions/logout_action.php'));
 
-$_SESSION['membership_done'] = $tier['name'];
-redirect(url('views/membership_checkout.php'));
+$reference = 'MEM' . strtoupper(bin2hex(random_bytes(5)));   // 13 chars, fits order_ref
+$memberships->createPending(customer_id(), $key, $tier['price'], $reference);
+
+$res = paystack_request('POST', '/transaction/initialize', [
+    'email'        => $customer['customer_email'],
+    'amount'       => (int)round($tier['price'] * 100),   // pesewas
+    'currency'     => 'GHS',
+    'reference'    => $reference,
+    'callback_url' => site_url('actions/membership_callback.php'),
+    'metadata'     => ['type' => 'membership', 'tier' => $key, 'customer_id' => customer_id()],
+]);
+
+if (empty($res['status']) || empty($res['data']['authorization_url'])) {
+    error_log('Paystack membership init failed: ' . json_encode($res));
+    $memberships->markFailed($reference);
+    $_SESSION['membership_errors'] = ['We could not start the payment. Please try again.'];
+    redirect($back);
+}
+redirect($res['data']['authorization_url']);

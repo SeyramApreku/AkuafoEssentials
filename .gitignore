@@ -1,0 +1,7 @@
+# Secrets: never commit these
+settings/mail_config.php
+settings/paystack_config.php
+settings/db_cred.php
+
+# Logs
+*.log

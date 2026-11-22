@@ -4,13 +4,14 @@ require_admin();
 
 $tables = admin_tables();
 $t = $_POST['t'] ?? '';
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($tables[$t])) redirect(url('views/admin/manage.php'));
-$back = url('views/admin/manage.php?t=' . $t);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($tables[$t])) redirect(url('views/admin/admin_manage.php'));
+$back = url('views/admin/admin_manage.php?t=' . $t);
 
 $db = new Database();
-$cols = $db->fetchAll("SHOW COLUMNS FROM `$t`");
+$table = tbl($t);   // real table name, e.g. products => aku_products
+$cols = $db->fetchAll("SHOW COLUMNS FROM `$table`");
 $id = (int)($_POST['id'] ?? 0);
-$old = $id ? $db->fetchOne("SELECT * FROM `$t` WHERE id = ?", [$id]) : null;
+$old = $id ? $db->fetchOne("SELECT * FROM `$table` WHERE id = ?", [$id]) : null;
 $commaCols = $tables[$t]['commas'] ?? [];
 $lineCols  = $tables[$t]['lines'] ?? [];
 
@@ -44,12 +45,12 @@ foreach ($cols as $c) {
 
 if ($old) {
     $set = implode(', ', array_map(fn($k) => "`$k` = ?", array_keys($data)));
-    $db->execute("UPDATE `$t` SET $set WHERE id = ?", [...array_values($data), $id]);
+    $db->execute("UPDATE `$table` SET $set WHERE id = ?", [...array_values($data), $id]);
     $_SESSION['admin_msg'] = 'Changes saved.';
 } else {
     $names = implode(', ', array_map(fn($k) => "`$k`", array_keys($data)));
     $marks = implode(', ', array_fill(0, count($data), '?'));
-    $db->execute("INSERT INTO `$t` ($names) VALUES ($marks)", array_values($data));
+    $db->execute("INSERT INTO `$table` ($names) VALUES ($marks)", array_values($data));
     $_SESSION['admin_msg'] = 'Added.';
 }
 redirect($back);

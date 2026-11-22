@@ -31,8 +31,13 @@ $here = $_SERVER['REQUEST_URI'];
       <?php if (is_admin()): ?><button type="button" onclick="toggleAdminNav()" class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border)">Admin menu</button><?php endif; ?>
 
         <?php if (!is_admin() && ($mt = member_tier())): ?><span class="inline-flex items-center gap-1 text-xs font-medium" title="<?= e(ucfirst($mt)) ?> member"><?= tier_star($mt) ?><span class="hidden md:inline"><?= e(ucfirst($mt)) ?></span></span><?php endif; ?>
-          <a href="<?= url('actions/logout_action.php') ?>" class="text-xs font-medium" style="color:var(--muted-foreground)">Log out</a>
-          
+      <?php if (customer_id() > 0): ?>
+        <a href="<?= url('views/orders.php') ?>" class="text-xs font-medium" style="color:<?= $current === 'orders.php' ? 'var(--primary)' : 'var(--muted-foreground)' ?>">My orders</a>
+        <a href="<?= url('actions/logout_action.php') ?>" class="text-xs font-medium" style="color:var(--muted-foreground)">Log out</a>
+      <?php else: ?>
+        <a href="<?= url('views/login.php') ?>" class="text-xs font-medium" style="color:var(--muted-foreground)">Log in</a>
+      <?php endif; ?>
+
       <button data-open-cart aria-label="Open cart" class="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 btn-primary">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/></svg>
   <?php if ($cartObj->count() > 0): ?><span class="w-4 h-4 rounded-full text-xs flex items-center justify-center font-bold" style="background:var(--accent);color:var(--accent-foreground)"><?= $cartObj->count() ?></span><?php endif; ?>
@@ -42,6 +47,7 @@ $here = $_SERVER['REQUEST_URI'];
   </div>
   <div id="mobile-menu" class="hidden lg:hidden border-t px-5 py-3" style="border-color:var(--border)">
     <?php foreach (nav_items() as $path => $label): ?><a href="<?= url($path) ?>" class="block py-2 text-sm font-medium"><?= $label ?></a><?php endforeach; ?>
+    <?php if (customer_id() > 0): ?><a href="<?= url('views/orders.php') ?>" class="block py-2 text-sm font-medium">My orders</a><?php endif; ?>
   </div>
 </header>
 <?php if (is_admin()) include __DIR__ . '/admin_menu.php'; ?>

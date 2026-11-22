@@ -15,7 +15,7 @@
       <span class="flex flex-col gap-[5px]"><i class="block h-px w-5 bg-current"></i><i class="block h-px w-5 bg-current"></i><i class="block h-px w-5 bg-current"></i></span>
       Menu
     </button>
-    <a href="<?= url('views/admin/manage.php') ?>" class="font-display text-base font-medium tracking-tight justify-self-center">Akuafo <span style="color:var(--accent)">&amp;</span> Essentials</a>
+    <a href="<?= url('views/admin/admin_manage.php') ?>" class="font-display text-base font-medium tracking-tight justify-self-center">Akuafo <span style="color:var(--accent)">&amp;</span> Essentials</a>
     <span class="text-xs uppercase tracking-widest justify-self-end" style="color:var(--muted-foreground)"><?= e($navName) ?></span>
   </div>
 </header>

@@ -1,13 +1,23 @@
 <?php
 require_once __DIR__ . '/../core/core.php';
-require_admin();
+require_once __DIR__ . '/../classes/order_class.php';
+require_admin();   // also checks the CSRF token
 
-$allowed = ['pending', 'confirmed', 'processing', 'out_for_delivery', 'delivered', 'cancelled'];
-$id = (int)($_POST['id'] ?? 0);
+$id     = (int)($_POST['id'] ?? 0);
 $status = $_POST['status'] ?? '';
+$back   = url('views/admin/admin_orders.php?id=' . $id);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !$id || !in_array($status, order_statuses(), true)) redirect($back);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $id && in_array($status, $allowed, true)) {
-    (new Database())->execute("UPDATE orders SET status = ? WHERE id = ?", [$status, $id]);
-    $_SESSION['admin_msg'] = 'Order status updated.';
+$orders = new OrderClass();
+$order  = $orders->fetchOne('SELECT id, payment_status FROM aku_orders WHERE id = ?', [$id]);
+if (!$order) redirect(url('views/admin/admin_orders.php'));
+
+// An order can only be paid, shipped or delivered once Paystack has confirmed the payment.
+if (in_array($status, ['paid', 'shipped', 'delivered'], true) && $order['payment_status'] !== 'paid') {
+    $_SESSION['admin_msg'] = 'This order has not been paid yet, so it can only be Pending or Cancelled.';
+    redirect($back);
 }
-redirect(url('views/admin/admin_orders.php?id=' . $id));
+
+$orders->setStatus($id, $status);
+$_SESSION['admin_msg'] = 'Order status updated to ' . ucfirst($status) . '.';
+redirect($back);

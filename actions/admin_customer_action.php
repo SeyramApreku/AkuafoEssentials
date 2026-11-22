@@ -9,12 +9,12 @@ $list = url('views/admin/admin_customers.php');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !$id) redirect($list);
 
 $db = new Database();
-$c = $db->fetchOne("SELECT * FROM customer WHERE customer_id = ? AND user_role = 2", [$id]);
+$c = $db->fetchOne("SELECT * FROM aku_customer WHERE customer_id = ? AND user_role = 2", [$id]);
 if (!$c) { $_SESSION['admin_msg'] = 'Customer not found.'; redirect($list); }
 
 if ($act === 'toggle') {
     $new = (int)($c['is_active'] ?? 1) ? 0 : 1;
-    $db->execute("UPDATE customer SET is_active = ? WHERE customer_id = ?", [$new, $id]);
+    $db->execute("UPDATE aku_customer SET is_active = ? WHERE customer_id = ?", [$new, $id]);
     $_SESSION['admin_msg'] = $new ? 'Account reactivated.' : 'Account deactivated.';
 } elseif ($act === 'save') {
     $name    = trim($_POST['customer_name'] ?? '');
@@ -27,7 +27,7 @@ if ($act === 'toggle') {
         $_SESSION['admin_msg'] = 'Fill in all fields with a valid email.';
     } else {
         try {
-            $db->execute("UPDATE customer SET customer_name = ?, customer_email = ?, customer_country = ?, customer_city = ?, customer_contact = ? WHERE customer_id = ?",
+            $db->execute("UPDATE aku_customer SET customer_name = ?, customer_email = ?, customer_country = ?, customer_city = ?, customer_contact = ? WHERE customer_id = ?",
                 [$name, $email, $country, $city, $contact, $id]);
             $_SESSION['admin_msg'] = 'Changes saved.';
         } catch (PDOException $e) {

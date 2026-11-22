@@ -1,10 +1,14 @@
 <?php
+require_once __DIR__ . '/../core/core.php';
+require_login('views/checkout.php');
+require_once __DIR__ . '/../classes/order_class.php';
+$accountEmail = (new OrderClass())->customer(customer_id())['customer_email'] ?? '';
 $pageTitle = 'Checkout | Akuafo & Essentials';
 include __DIR__ . '/layout/header.php';
-$items = $cartObj->items(); $sub = $cartObj->subtotal(); $del = $cartObj->deliveryCost(); $hasPass = $cartObj->hasPass();
+$items = $cartObj->items(); $sub = $cartObj->subtotal();
+$zones = delivery_zones(); $tier = member_tier(); $creditLeft = delivery_credit_left();
 $errors = $_SESSION['checkout_errors'] ?? []; unset($_SESSION['checkout_errors']);
 $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
-$base = $sub + $del;
 ?>
 <div class="max-w-2xl mx-auto px-6 py-12">
 <?php if (!$items || $sub < MIN_ORDER): ?>
@@ -29,18 +33,31 @@ $base = $sub + $del;
       <?php endforeach; ?>
     </ul>
 
-    <?php if (!$hasPass): ?>
-    <label class="mb-6 p-4 border flex items-start justify-between gap-4 cursor-pointer" style="border-color:var(--secondary);background:var(--muted)">
-      <span><span class="block text-sm font-medium mb-1">✦ Add Akuafo Delivery Pass, <?= money(PASS_PRICE) ?>/month</span><span class="text-xs" style="color:var(--muted-foreground)">Unlimited free delivery on all future orders. Cancel anytime.</span></span>
-      <input type="checkbox" name="add_pass" value="1" id="add-pass" class="mt-1">
-    </label>
+    <?php if (!$tier): ?>
+    <a href="<?= url('views/membership.php') ?>" class="mb-6 p-4 border block" style="border-color:var(--secondary);background:var(--muted)">
+      <span class="block text-sm font-medium mb-1">✦ Become a member for free delivery benefits</span>
+      <span class="text-xs" style="color:var(--muted-foreground)">Members get a monthly delivery allowance, discounts and more. View membership →</span>
+    </a>
+    <?php else: ?>
+    <div class="mb-6 p-4 border" style="border-color:var(--secondary);background:var(--muted)">
+      <span class="block text-sm font-medium mb-1">✦ <?= e(ucfirst($tier)) ?> member</span>
+      <span class="text-xs" style="color:var(--muted-foreground)">Delivery credit left this month: <?= money($creditLeft) ?>. Unused credit does not roll over.</span>
+    </div>
     <?php endif; ?>
+
+    <h2 class="font-display text-xl mb-2">Delivery area</h2>
+    <select name="zone" id="zone" required class="w-full px-4 py-3 text-sm border bg-transparent mb-6" style="border-color:var(--border)">
+      <option value="">Select your area</option>
+      <?php foreach ($zones as $z): ?>
+        <option value="<?= (int)$z['id'] ?>" data-fee="<?= (float)$z['fee'] ?>"><?= e($z['name']) ?> (<?= money($z['fee']) ?>)</option>
+      <?php endforeach; ?>
+    </select>
 
     <div class="space-y-1.5 text-sm mb-10 p-4 border" style="border-color:var(--border)">
       <div class="flex justify-between"><span style="color:var(--muted-foreground)">Subtotal</span><span><?= money($sub) ?></span></div>
-      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span><?= $hasPass ? 'Free (Pass)' : money($del) ?></span></div>
-      <div id="pass-row" class="hidden flex justify-between"><span style="color:var(--muted-foreground)">Delivery Pass (1st month)</span><span><?= money(PASS_PRICE) ?></span></div>
-      <div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span id="grand-total" data-base="<?= $base ?>" data-pass="<?= PASS_PRICE ?>"><?= money($base) ?></span></div>
+      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span id="del-fee">Select your area</span></div>
+      <div id="credit-row" class="justify-between" style="display:none"><span style="color:var(--muted-foreground)">Membership delivery credit</span><span id="del-credit"></span></div>
+      <div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span id="grand-total"><?= money($sub) ?></span></div>
       <p class="text-xs pt-1" style="color:var(--muted-foreground)"><?= $hasBox ? 'Box subscriptions are billed weekly.' : 'One-off payment.' ?></p>
     </div>
 
@@ -57,47 +74,48 @@ $base = $sub + $del;
       <?php endforeach; ?>
     </div>
 
-
     <h2 class="font-display text-xl mb-4">Contact details</h2>
 
-<div class="mb-6">
-    <label class="text-xs uppercase tracking-widest mb-2 block"
-           style="color:var(--muted-foreground)">
-        Email address
-    </label>
-
-    <input
-        type="email"
-        name="email"
-        required
-        placeholder="you@example.com"
-        class="w-full px-4 py-3 text-sm border outline-none bg-transparent"
-        style="border-color:var(--border)"
-    >
-    <p class="text-xs mt-2" style="color:var(--muted-foreground)">
-        Your email will be used for payment confirmation and your receipt.
-    </p>
-</div>
-
-
-    <h2 class="font-display text-xl mb-4">Payment</h2>
-    <div class="grid grid-cols-2 gap-2 mb-6">
-      <?php foreach ([['mtn','MTN Mobile Money','#FFCC00','#1A1916'],['vodafone','Vodafone Cash','#E60014','#fff'],['airteltigo','AirtelTigo Money','#DC143C','#fff'],['card','Debit / Credit Card','var(--muted)','var(--foreground)']] as $k => [$id,$label,$bg,$fg]): ?>
-        <label class="pick relative py-3 px-3 text-xs border flex items-center gap-2 cursor-pointer" style="border-color:var(--border)">
-          <input type="radio" name="method" value="<?= $id ?>" <?= $k === 0 ? 'checked' : '' ?>>
-          <span class="w-6 h-6 rounded flex items-center justify-center font-bold shrink-0" style="background:<?= $bg ?>;color:<?= $fg ?>"><?= $label[0] ?></span><span><?= $label ?></span>
-        </label>
-      <?php endforeach; ?>
+    <div class="mb-6">
+      <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)">Email address</label>
+      <p class="w-full px-4 py-3 text-sm border" style="border-color:var(--border);background:var(--muted)"><?= e($accountEmail) ?></p>
+      <p class="text-xs mt-2" style="color:var(--muted-foreground)">This is your account email. Your payment confirmation and invoice will be sent here.</p>
     </div>
-    <div id="mobile-fields" class="mb-6">
+
+    <div class="mb-10">
       <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)">Mobile number</label>
-      <input type="tel" name="phone" placeholder="e.g. 0244 000 000" class="w-full px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
-      <p class="text-xs mt-2" style="color:var(--muted-foreground)">You'll receive a prompt on this number to approve the payment.</p>
+      <input type="tel" name="phone" required placeholder="e.g. 0244 000 000" class="w-full px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
+      <p class="text-xs mt-2" style="color:var(--muted-foreground)">We use this to confirm your delivery slot. You will choose how to pay on the next step.</p>
     </div>
-    <div id="card-fields" class="hidden mb-6 p-4 text-xs" style="background:var(--muted);color:var(--muted-foreground)">Card payments are handled by a payment gateway (e.g. Paystack). Card details are never stored on this site.</div>
 
-    <button class="w-full py-3 text-sm font-medium btn-primary">Place order →</button>
+    <button class="w-full py-3 text-sm font-medium btn-primary">Continue to order summary →</button>
   </form>
+
+  <script>
+  (function () {
+    var sub = <?= (float)$sub ?>, credit = <?= (float)$creditLeft ?>;
+    var zone = document.getElementById('zone');
+    function m(n) { return 'GH₵ ' + (n % 1 === 0 ? n : n.toFixed(2)); }
+    function update() {
+      var o = zone.options[zone.selectedIndex];
+      var fee = o && o.dataset.fee ? parseFloat(o.dataset.fee) : null;
+      var row = document.getElementById('credit-row');
+      if (fee === null) {
+        document.getElementById('del-fee').textContent = 'Select your area';
+        row.style.display = 'none';
+        document.getElementById('grand-total').textContent = m(sub);
+        return;
+      }
+      var use = Math.min(fee, credit);
+      document.getElementById('del-fee').textContent = m(fee);
+      row.style.display = use > 0 ? 'flex' : 'none';
+      document.getElementById('del-credit').textContent = '- ' + m(use);
+      document.getElementById('grand-total').textContent = m(sub + fee - use);
+    }
+    zone.addEventListener('change', update);
+    update();
+  })();
+  </script>
 <?php endif; ?>
 </div>
 <?php include __DIR__ . '/layout/footer.php'; ?>

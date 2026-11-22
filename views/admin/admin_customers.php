@@ -8,16 +8,16 @@ $viewId = (int)($_GET['id'] ?? 0);
 $msg = $_SESSION['admin_msg'] ?? null; unset($_SESSION['admin_msg']);
 $nice = fn($s) => ucwords(str_replace('_', ' ', (string)$s));
 
-$cust = $viewId ? $db->fetchOne("SELECT * FROM customer WHERE customer_id = ? AND user_role = 2", [$viewId]) : null;
-$history = $cust ? $db->fetchAll("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", [$viewId]) : [];
+$cust = $viewId ? $db->fetchOne("SELECT * FROM aku_customer WHERE customer_id = ? AND user_role = 2", [$viewId]) : null;
+$history = $cust ? $db->fetchAll("SELECT * FROM aku_orders WHERE user_id = ? ORDER BY id DESC", [$viewId]) : [];
 $spent = 0;
 foreach ($history as $h) if (($h['status'] ?? '') !== 'cancelled') $spent += (float)($h['total'] ?? 0);
 
 if ($q !== '') {
     $like = '%' . $q . '%';
-    $rows = $db->fetchAll("SELECT * FROM customer WHERE user_role = 2 AND (customer_name LIKE ? OR customer_email LIKE ? OR customer_contact LIKE ?) ORDER BY customer_id DESC", [$like, $like, $like]);
+    $rows = $db->fetchAll("SELECT * FROM aku_customer WHERE user_role = 2 AND (customer_name LIKE ? OR customer_email LIKE ? OR customer_contact LIKE ?) ORDER BY customer_id DESC", [$like, $like, $like]);
 } else {
-    $rows = $db->fetchAll("SELECT * FROM customer WHERE user_role = 2 ORDER BY customer_id DESC");
+    $rows = $db->fetchAll("SELECT * FROM aku_customer WHERE user_role = 2 ORDER BY customer_id DESC");
 }
 
 $pageTitle = 'Customers | Akuafo & Essentials';

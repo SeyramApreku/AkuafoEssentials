@@ -3,6 +3,7 @@ require_once __DIR__ . '/../classes/order_class.php';
 $pageTitle = 'Order placed | Akuafo & Essentials';
 $order = (new OrderClass())->byRef($_GET['ref'] ?? '');
 if (!$order) { header('Location: ' . '../index.php'); exit; }
+if (($order['payment_status'] ?? '') !== 'paid') { header('Location: payment_failed.php?ref=' . urlencode($order['ref'])); exit; }
 include __DIR__ . '/layout/header.php';
 ?>
 <div class="max-w-md mx-auto px-6 py-20 text-center">

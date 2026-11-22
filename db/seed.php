@@ -14,7 +14,7 @@ $products = [
  [7,'Dawadawa (Locust Bean)','Dawadawa',14,'per 200g pack','Peppers & Spices','Northern Region','Alhassan Dauda','photo-1601493700631-2b16ec4b4716','Fermented locust beans from Tamale. Deep umami, earthy funk.','Heritage'],
  [8,'Cocoyam (Taro)','Mankani',18,'per 2kg bundle','Tubers & Roots','Central Region','Efua Boateng','photo-1574484284002-952d92456975','Grown in the moist soils near Cape Coast. Starchy and slightly sweet.',null],
 ];
-foreach ($products as $p) $db->execute('REPLACE INTO products VALUES (?,?,?,?,?,?,?,?,?,?,?)', $p);
+foreach ($products as $p) $db->execute('REPLACE INTO aku_products VALUES (?,?,?,?,?,?,?,?,?,?,?)', $p);
 
 $boxes = [
  ['veg-box','The Veg Box','Seasonal Ghanaian vegetables, every week','photo-1627989147125-a004d05946d3','#2B4A12',['Kontomire','Garden Eggs','Okra','Fresh Tomatoes','Garden Pepper','Spring Onions','Garden Egg Leaf'],'Contents rotate with the season. You will be notified of any substitutions.',
@@ -25,8 +25,8 @@ $boxes = [
    [['Small','1-2 people',88,'6-7 items'],['Medium','3-4 people',125,'9-10 items'],['Large','5+ people',168,'13-15 items']]],
 ];
 foreach ($boxes as $b) {
-    $db->execute('REPLACE INTO boxes VALUES (?,?,?,?,?,?,?)', [$b[0],$b[1],$b[2],$b[3],$b[4],$j($b[5]),$b[6]]);
-    foreach ($b[7] as $i => $s) $db->execute('INSERT INTO box_sizes (box_id,idx,label,description,price,items) VALUES (?,?,?,?,?,?)', [$b[0],$i,...$s]);
+    $db->execute('REPLACE INTO aku_boxes VALUES (?,?,?,?,?,?,?)', [$b[0],$b[1],$b[2],$b[3],$b[4],$j($b[5]),$b[6]]);
+    foreach ($b[7] as $i => $s) $db->execute('INSERT INTO aku_box_sizes (box_id,idx,label,description,price,items) VALUES (?,?,?,?,?,?)', [$b[0],$i,...$s]);
 }
 
 $hampers = [
@@ -34,7 +34,7 @@ $hampers = [
  ['wedding-bulk','Wedding & Events Pack','Weddings & Events',480,'14 days','photo-1649551895001-85125e4dd5bd','Bulk-packed produce for wedding receptions, outdoorings, and large family gatherings. Coordinated delivery to your venue.',['White Yam (10kg)','Plantain (4 hands)','Cassava (5kg)','Fresh Tomatoes (5kg)','Peppers (1.5kg)','Garden Eggs (3kg)','Kontomire (6 bunches)','Onions (3kg)','Dawadawa (500g)','Palm Nuts (2kg)'],'30-50 people','Bulk'],
  ['family-gathering','Family Gathering Box','Family Gatherings',210,'5 days','photo-1628690570318-9d1e75e4f590','For Sunday gatherings, naming ceremonies, and homecomings. A curated selection sized for a big household table.',['White Yam (2kg)','Ripe Plantain (1 hand)','Kontomire (2 bunches)','Garden Eggs (1kg)','Fresh Tomatoes (1.5kg)','Scotch Bonnets (300g)','Onions (500g)','Spring Onions','Dawadawa (200g)'],'10-20 people',null],
 ];
-foreach ($hampers as $h) { $h[7] = $j($h[7]); $db->execute('REPLACE INTO hampers VALUES (?,?,?,?,?,?,?,?,?,?)', $h); }
+foreach ($hampers as $h) { $h[7] = $j($h[7]); $db->execute('REPLACE INTO aku_hampers VALUES (?,?,?,?,?,?,?,?,?,?)', $h); }
 
 $bulk = [
  ['bulk-tomato','Tomato Crate','10kg, Techiman',95,'photo-1607305387299-a3d9611cd469'],
@@ -42,7 +42,7 @@ $bulk = [
  ['bulk-yam','Yam Sack','25kg, Techiman',280,'photo-1567306226416-28f0efdc88ce'],
  ['bulk-pepper','Pepper Sack','5kg, Bolgatanga',75,'photo-1583119022894-919a68a3d0e3'],
 ];
-foreach ($bulk as $b) $db->execute('REPLACE INTO bulk_items VALUES (?,?,?,?,?)', $b);
+foreach ($bulk as $b) $db->execute('REPLACE INTO aku_bulk_items VALUES (?,?,?,?,?)', $b);
 
 $recipes = [
  [1,'Kontomire Stew','Palava Sauce','45 min','Easy',4,'photo-1665332195309-9d75071138f0',
@@ -62,7 +62,7 @@ $recipes = [
   ['Roast garden eggs directly over a gas flame until the skin blisters. Cool, peel and chop coarsely.','Blend tomatoes, half the onion and scotch bonnets. Fry in groundnut oil with the remaining sliced onion for 12 minutes.','Add the chopped garden eggs and flaked smoked herring. Cook for another 10 minutes.','Finish with a small piece of dawadawa, crushed. Serve with rice or boiled plantain.'],
   ['Garden Eggs','Fresh Tomatoes','Scotch Bonnet Peppers','Dawadawa'],['Quick','Vegetarian-adaptable','Traditional']],
 ];
-foreach ($recipes as $r) { foreach ([7,8,9,10] as $k) $r[$k] = $j($r[$k]); $db->execute('REPLACE INTO recipes VALUES (?,?,?,?,?,?,?,?,?,?,?)', $r); }
+foreach ($recipes as $r) { foreach ([7,8,9,10] as $k) $r[$k] = $j($r[$k]); $db->execute('REPLACE INTO aku_recipes VALUES (?,?,?,?,?,?,?,?,?,?,?)', $r); }
 
 $farmers = [
  [1,'Kofi Asante','Brong-Ahafo Region','Techiman','photo-1740000649192-7fa4736c4c08',['White Yam','Fresh Tomatoes'],'Kofi has farmed the same plot outside Techiman for 22 years. His yam mounds are planted in October and harvested in the dry season when the starches are at their most concentrated. He farms without synthetic fertiliser, rotating with legumes to restore nitrogen between seasons.',['Pesticide-free','Soil-tested annually'],4.5,'Oct - Feb (Yam)'],
@@ -71,6 +71,6 @@ $farmers = [
  [4,'Ama Dzorlali','Volta Region','Ho','photo-1665904285523-47c0a6fdfc0e',['Garden Eggs'],'Ama grows both the white and small purple garden egg varieties along the Volta River basin near Ho. The fertile alluvial soils produce fruit with a distinctive mild bitterness that chefs seek out. She joined Akuafo in 2022 and has since tripled her plot.',['Pesticide-free'],1.2,'Sept - Dec (White); Year-round (Purple)'],
  [5,'Alhassan Dauda','Northern Region','Tamale','photo-1625191824758-e00b2c51f388',['Dawadawa (Locust Bean)'],"Dawadawa is one of the oldest preserved foods in West Africa. Alhassan's family has made it for four generations using locust beans gathered from wild néré trees outside Tamale. Boiled, fermented for three days, then sun-dried.",['Wild-harvested','Traditional process'],null,'June - September (Harvest)'],
 ];
-foreach ($farmers as $f) { $f[5] = $j($f[5]); $f[7] = $j($f[7]); $db->execute('REPLACE INTO farmers VALUES (?,?,?,?,?,?,?,?,?,?)', $f); }
+foreach ($farmers as $f) { $f[5] = $j($f[5]); $f[7] = $j($f[7]); $db->execute('REPLACE INTO aku_farmers VALUES (?,?,?,?,?,?,?,?,?,?)', $f); }
 
 echo "Seeded.\n";

@@ -1,17 +1,21 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
-$tCur = $script === 'manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers'][$script] ?? null);
+$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items'][$script] ?? null);
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
-    ['Products',     'views/admin/manage.php?t=products',   'products'],
-    ['Categories',   'views/admin/manage.php?t=categories', 'categories'],
-    ['Regions',      'views/admin/manage.php?t=regions',    'regions'],
-    ['Farmers',      'views/admin/manage.php?t=farmers',    'farmers'],
-    ['Recipes',      'views/admin/manage.php?t=recipes',    'recipes'],
-    ['Partners',     'views/admin/manage.php?t=partners',   'partners'],
+    ['Products',     'views/admin/admin_manage.php?t=products',   'products'],
+    ['Categories',   'views/admin/admin_manage.php?t=categories', 'categories'],
+    ['Regions',      'views/admin/admin_manage.php?t=regions',    'regions'],
+    ['Farmers',      'views/admin/admin_manage.php?t=farmers',    'farmers'],
+    ['Recipes',      'views/admin/admin_manage.php?t=recipes',    'recipes'],
+    ['Partners',     'views/admin/admin_manage.php?t=partners',   'partners'],
     ['Weekly Boxes', 'views/admin/admin_boxes.php',         'boxes'],
+    ['Entertaining', 'views/admin/admin_ent_items.php',  'ent_items'],
+    ['Occasions',    'views/admin/admin_manage.php?t=ent_occasions',  'ent_occasions'],
+    ['Event Categories', 'views/admin/admin_manage.php?t=ent_categories', 'ent_categories'],
     ['Orders',       'views/admin/admin_orders.php',        'orders'],
     ['Customers',    'views/admin/admin_customers.php',     'customers'],
+    ['Delivery Zones', 'views/admin/admin_manage.php?t=delivery_zones', 'delivery_zones'],
     ['View Store',   'index.php',                           null],
 ];
 ?>
@@ -38,6 +42,15 @@ $links = [
   </div>
 </aside>
 <script>
+// Adds the CSRF token to every POST form on admin pages (checked by require_admin()).
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (f) {
+    if (f.querySelector('input[name="csrf"]')) return;
+    var i = document.createElement('input');
+    i.type = 'hidden'; i.name = 'csrf'; i.value = <?= json_encode(csrf_token()) ?>;
+    f.appendChild(i);
+  });
+});
 function toggleAdminNav() {
   document.getElementById('adminDrawer').classList.toggle('open');
   document.getElementById('adminOverlay').classList.toggle('open');
