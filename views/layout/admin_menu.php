@@ -1,6 +1,6 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
-$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items'][$script] ?? null);
+$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items', 'admin_ent_orders.php' => 'ent_orders', 'admin_ent_capacity.php' => 'ent_capacity', 'admin_ratings.php' => 'ratings'][$script] ?? null);
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
     ['Products',     'views/admin/admin_manage.php?t=products',   'products'],
@@ -13,6 +13,8 @@ $links = [
     ['Entertaining', 'views/admin/admin_ent_items.php',  'ent_items'],
     ['Occasions',    'views/admin/admin_manage.php?t=ent_occasions',  'ent_occasions'],
     ['Event Categories', 'views/admin/admin_manage.php?t=ent_categories', 'ent_categories'],
+    ['Event Orders', 'views/admin/admin_ent_orders.php',    'ent_orders'],
+    ['Event Capacity', 'views/admin/admin_ent_capacity.php', 'ent_capacity'],
     ['Orders',       'views/admin/admin_orders.php',        'orders'],
     ['Customers',    'views/admin/admin_customers.php',     'customers'],
     ['Delivery Zones', 'views/admin/admin_manage.php?t=delivery_zones', 'delivery_zones'],

@@ -4,7 +4,8 @@ require_once __DIR__ . '/../classes/order_class.php';
 require_once __DIR__ . '/cart_controller.php';
 
 // The order's email is always the account's signup email, read from the database.
-function place_order($date, $window, $method, $phone, $zoneId)
+// $extra: order_type ('standard' | 'entertaining') and event_address (entertaining only).
+function place_order($date, $window, $method, $phone, $zoneId, $extra = [])
 {
     $cart = cart();
     if (!$cart->items() || $cart->subtotal() < MIN_ORDER) return false;
@@ -17,7 +18,8 @@ function place_order($date, $window, $method, $phone, $zoneId)
     $data = ['subtotal' => $cart->subtotal(), 'delivery' => $q['pay'], 'pass_fee' => 0,
              'total' => $cart->subtotal() + $q['pay'],
              'date' => $date, 'window' => $window, 'method' => $method, 'phone' => $phone,
-             'email' => $email, 'user_id' => $_SESSION['customer_id'], 'zone' => $q['zone'], 'credit' => $q['credit']];
+             'email' => $email, 'user_id' => $_SESSION['customer_id'], 'zone' => $q['zone'], 'credit' => $q['credit'],
+             'order_type' => $extra['order_type'] ?? 'standard', 'event_address' => $extra['event_address'] ?? null];
     return (new OrderClass())->create($data, $cart->items());
 }
 

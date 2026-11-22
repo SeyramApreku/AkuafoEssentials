@@ -66,4 +66,74 @@ class EntertainingClass extends Database
     }
 
     public function delete($id) { return $this->execute('DELETE FROM aku_ent_items WHERE id = ?', [(int)$id]); }   // occasions cascade
+
+    /* ---------- Storefront ---------- */
+
+    // Available items matching the filters. $f: occasion (id), category (id), diet (list of tags, all required), guests (int).
+    public function browse(array $f)
+    {
+        $sql = 'SELECT i.*, c.name AS category_name,
+                       (SELECT GROUP_CONCAT(occasion_id) FROM aku_ent_item_occasions WHERE item_id = i.id) AS occasion_ids
+                  FROM aku_ent_items i JOIN aku_ent_categories c ON c.id = i.category_id
+                 WHERE i.is_available = 1';
+        $p = [];
+        if (!empty($f['occasion'])) { $sql .= ' AND EXISTS (SELECT 1 FROM aku_ent_item_occasions o WHERE o.item_id = i.id AND o.occasion_id = ?)'; $p[] = (int)$f['occasion']; }
+        if (!empty($f['category'])) { $sql .= ' AND i.category_id = ?'; $p[] = (int)$f['category']; }
+        foreach ($f['diet'] ?? [] as $d) { $sql .= ' AND FIND_IN_SET(?, i.dietary)'; $p[] = $d; }
+        if (!empty($f['guests']))   { $sql .= ' AND i.serves IS NOT NULL'; }   // only portioned food can be sized for guests
+        $sql .= ' ORDER BY i.featured DESC, c.sort_order, c.id, i.name';
+        return array_map([$this, 'decode'], $this->fetchAll($sql, $p));
+    }
+
+    public function featured($limit = 8)
+    {
+        return array_map([$this, 'decode'], $this->fetchAll(
+            'SELECT i.*, c.name AS category_name, NULL AS occasion_ids FROM aku_ent_items i JOIN aku_ent_categories c ON c.id = i.category_id
+              WHERE i.is_available = 1 AND i.featured = 1 ORDER BY c.sort_order, i.name LIMIT ' . (int)$limit));
+    }
+
+    public function related($item, $limit = 4)
+    {
+        return array_map([$this, 'decode'], $this->fetchAll(
+            'SELECT i.*, c.name AS category_name, NULL AS occasion_ids FROM aku_ent_items i JOIN aku_ent_categories c ON c.id = i.category_id
+              WHERE i.is_available = 1 AND i.category_id = ? AND i.id <> ? ORDER BY i.featured DESC, i.name LIMIT ' . (int)$limit,
+            [$item['category_id'], $item['id']]));
+    }
+
+    public function occasion($id) { return $this->fetchOne('SELECT * FROM aku_ent_occasions WHERE id = ?', [(int)$id]); }
+    public function category($id) { return $this->fetchOne('SELECT * FROM aku_ent_categories WHERE id = ?', [(int)$id]); }
+
+    /* ---------- Settings, capacity and blocked dates ---------- */
+
+    public function setting($name, $default)
+    {
+        $r = $this->fetchOne('SELECT value FROM aku_settings WHERE name = ?', [$name]);
+        return $r ? $r['value'] : $default;
+    }
+    public function setSetting($name, $value)
+    {
+        $this->execute('INSERT INTO aku_settings (name, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = VALUES(value)', [$name, (string)$value]);
+    }
+
+    // Rules for one date, keyed by time window ('' = whole day).
+    public function rulesFor($date)
+    {
+        $rows = $this->fetchAll('SELECT * FROM aku_ent_date_rules WHERE rule_date = ?', [$date]);
+        return array_column($rows, null, 'time_window');
+    }
+    public function rulesBetween($from, $to)
+    {
+        return $this->fetchAll('SELECT * FROM aku_ent_date_rules WHERE rule_date BETWEEN ? AND ? ORDER BY rule_date, time_window', [$from, $to]);
+    }
+
+    // Entertaining orders that take up a slot: paid ones, plus unpaid ones started in the last
+    // 30 minutes (someone is on the Paystack page right now). $window = null counts the whole day.
+    public function bookedCount($date, $window = null, $exceptOrderId = 0)
+    {
+        $sql = "SELECT COUNT(*) AS n FROM aku_orders WHERE order_type = 'entertaining' AND delivery_date = ? AND status <> 'cancelled'
+                  AND (payment_status = 'paid' OR created_at > NOW() - INTERVAL 30 MINUTE) AND id <> ?";
+        $p = [$date, (int)$exceptOrderId];
+        if ($window !== null) { $sql .= ' AND time_window = ?'; $p[] = $window; }
+        return (int)$this->fetchOne($sql, $p)['n'];
+    }
 }

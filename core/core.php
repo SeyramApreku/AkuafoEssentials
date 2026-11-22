@@ -209,6 +209,8 @@ function csrf_valid()
 
 // Order status flow (aku_orders.status). Payment itself is tracked in payment_status.
 function order_statuses() { return ['pending', 'paid', 'shipped', 'delivered', 'cancelled']; }
+// Entertaining orders have their own flow (payment confirmed => 'received').
+function ent_order_statuses() { return ['pending', 'received', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']; }
 
 // Keys are the unprefixed names. Wherever the admin code puts a key into SQL,
 // wrap it with tbl(), e.g. "SELECT * FROM " . tbl($table)

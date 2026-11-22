@@ -1,6 +1,8 @@
 <?php
 $items = $cartObj->items(); $sub = $cartObj->subtotal(); $del = $cartObj->deliveryCost(); $pass = $cartObj->hasPass();
 $belowMin = $items && $sub < MIN_ORDER;
+$isEvent = $cartObj->kind() === 'entertaining';
+$cartNotice = $_SESSION['cart_notice'] ?? null; unset($_SESSION['cart_notice']);
 function cart_btn($act, $id, $label, $here, $cls = '') {
     return '<form method="post" action="' . url('actions/cart_action.php') . '" class="inline"><input type="hidden" name="action" value="' . $act . '"><input type="hidden" name="id" value="' . e($id) . '"><input type="hidden" name="return" value="' . e($here) . '"><button class="' . $cls . '">' . $label . '</button></form>';
 }
@@ -12,6 +14,13 @@ function cart_btn($act, $id, $label, $here, $cls = '') {
     <button data-close-cart class="text-xl leading-none" style="color:var(--muted-foreground)">×</button>
   </div>
   <div class="flex-1 overflow-y-auto px-5 py-4">
+    <?php if ($cartNotice): ?>
+      <div class="text-xs mb-4 p-3" style="background:var(--muted);color:var(--accent)">
+        <?= e($cartNotice) ?>
+        <div class="mt-2"><?= cart_btn('clear', '', 'Empty my cart', $here, 'underline font-medium') ?></div>
+      </div>
+    <?php endif; ?>
+    <?php if ($isEvent): ?><p class="text-xs uppercase tracking-widest mb-3" style="color:var(--accent)">Entertaining order</p><?php endif; ?>
     <?php if (!$items): ?>
       <p class="text-sm text-center py-12" style="color:var(--muted-foreground)">Your order is empty.</p>
     <?php else: ?>
@@ -47,7 +56,7 @@ function cart_btn($act, $id, $label, $here, $cls = '') {
       <?php if (!$belowMin): ?><div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span><?= money($sub + $del) ?></span></div><?php endif; ?>
     </div>
     <?php if ($belowMin): ?><button disabled class="w-full py-3 text-sm font-medium btn-primary opacity-40">Book delivery &amp; pay</button>
-    <?php else: ?><a href="<?= url('views/checkout.php') ?>" class="block text-center w-full py-3 text-sm font-medium btn-primary">Book delivery &amp; pay</a><?php endif; ?>
+    <?php else: ?><a href="<?= url('views/checkout.php') ?>" class="block text-center w-full py-3 text-sm font-medium btn-primary"><?= $isEvent ? 'Choose event date &amp; pay' : 'Book delivery &amp; pay' ?></a><?php endif; ?>
   </div>
   <?php endif; ?>
 </aside>

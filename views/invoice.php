@@ -59,7 +59,8 @@ include __DIR__ . '/layout/header.php';
       <p><span style="color:var(--muted-foreground)">Payment:</span> Paid via Paystack</p>
       <p><span style="color:var(--muted-foreground)">Billed to:</span> <?= e($d['name'] ? $d['name'] . ', ' : '') ?><?= e($d['email']) ?></p>
       <?php if (!empty($order['phone'])): ?><p><span style="color:var(--muted-foreground)">Phone:</span> <?= e($order['phone']) ?></p><?php endif; ?>
-      <p class="sm:col-span-2"><span style="color:var(--muted-foreground)">Delivery:</span> <?= e($d['delivery']) ?> (<?= e($order['delivery_zone']) ?>)</p>
+      <p class="sm:col-span-2"><span style="color:var(--muted-foreground)"><?= ($order['order_type'] ?? '') === 'entertaining' ? 'Event delivery' : 'Delivery' ?>:</span> <?= e($d['delivery']) ?> (<?= e($order['delivery_zone']) ?>)</p>
+      <?php if (!empty($order['event_address'])): ?><p class="sm:col-span-2"><span style="color:var(--muted-foreground)">Event address:</span> <?= e($order['event_address']) ?></p><?php endif; ?>
     </div>
 
     <table class="w-full text-sm mb-6">

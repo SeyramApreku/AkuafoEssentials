@@ -9,6 +9,17 @@ $items = $cartObj->items(); $sub = $cartObj->subtotal();
 $zones = delivery_zones(); $tier = member_tier(); $creditLeft = delivery_credit_left();
 $errors = $_SESSION['checkout_errors'] ?? []; unset($_SESSION['checkout_errors']);
 $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
+
+// Entertaining orders: event date picker limited by the longest notice period in the cart.
+$isEvent = $cartObj->kind() === 'entertaining';
+if ($isEvent) {
+    require_once __DIR__ . '/../controllers/entertaining_controller.php';
+    $noticeH  = ent_cart_notice_hours();
+    $earliest = ent_earliest_date($noticeH)->format('Y-m-d');
+    $latest   = (new DateTime('today'))->modify('+' . ENT_BOOK_AHEAD_DAYS . ' days')->format('Y-m-d');
+    $blocked  = ent_unavailable_dates($earliest, $latest);
+    $old      = $_SESSION['checkout_old'] ?? []; unset($_SESSION['checkout_old']);
+}
 ?>
 <div class="max-w-2xl mx-auto px-6 py-12">
 <?php if (!$items || $sub < MIN_ORDER): ?>
@@ -17,8 +28,8 @@ $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
     <a href="<?= url('views/shop.php') ?>" class="text-sm" style="color:var(--primary)">← Back to shop</a>
   </div>
 <?php else: ?>
-  <a href="<?= url('views/shop.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">← Continue shopping</a>
-  <h1 class="font-display text-3xl font-light mb-8">Checkout</h1>
+  <a href="<?= url($isEvent ? 'views/preorder.php' : 'views/shop.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">← Continue shopping</a>
+  <h1 class="font-display text-3xl font-light mb-8"><?= $isEvent ? 'Entertaining checkout' : 'Checkout' ?></h1>
   <?php foreach ($errors as $err): ?><p class="text-sm mb-3 p-3" style="background:var(--muted);color:var(--accent)"><?= e($err) ?></p><?php endforeach; ?>
 
   <form method="post" action="<?= url('actions/checkout_action.php') ?>">
@@ -61,6 +72,32 @@ $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
       <p class="text-xs pt-1" style="color:var(--muted-foreground)"><?= $hasBox ? 'Box subscriptions are billed weekly.' : 'One-off payment.' ?></p>
     </div>
 
+    <?php if ($isEvent): ?>
+    <h2 class="font-display text-xl mb-2">Your event</h2>
+    <p class="text-xs mb-4" style="color:var(--muted-foreground)">Your cart needs at least <strong><?= e(notice_label($noticeH)) ?></strong> notice, so the earliest event date is <strong><?= e(date('D j M', strtotime($earliest))) ?></strong>.</p>
+    <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)" for="event-date">Event date</label>
+    <input type="date" id="event-date" name="date" required min="<?= $earliest ?>" max="<?= $latest ?>" value="<?= e($old['date'] ?? '') ?>" class="w-full px-4 py-3 text-sm border bg-transparent mb-1" style="border-color:var(--border)">
+    <p id="date-msg" class="text-xs mb-5" style="color:var(--accent)"></p>
+    <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted-foreground)">Delivery time</p>
+    <div class="flex flex-col gap-2 mb-6">
+      <?php foreach (time_windows() as $k => $t): ?>
+        <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)"><input type="radio" name="window" value="<?= e($t) ?>" <?= ($old['window'] ?? time_windows()[0]) === $t ? 'checked' : '' ?>><?= e($t) ?></label>
+      <?php endforeach; ?>
+    </div>
+    <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)" for="event-address">Event address (optional)</label>
+    <textarea id="event-address" name="event_address" rows="2" maxlength="255" placeholder="Venue or house address, landmark, gate colour…" class="w-full px-4 py-3 text-sm border outline-none bg-transparent mb-1" style="border-color:var(--border)"><?= e($old['event_address'] ?? '') ?></textarea>
+    <p class="text-xs mb-10" style="color:var(--muted-foreground)">Leave empty if we're delivering to your usual address in the area above. You can change the date, time or address until <?= ent_cutoff_hours() ?> hours before the event.</p>
+    <script>
+    (function () {
+      var blocked = <?= json_encode($blocked) ?>, input = document.getElementById('event-date'), msg = document.getElementById('date-msg');
+      input.addEventListener('change', function () {
+        if (blocked.indexOf(input.value) !== -1) { msg.textContent = 'We are fully booked on that date. Please choose another.'; input.value = ''; }
+        else if (input.value && input.value < input.min) { msg.textContent = 'That date is too soon for the items in your cart.'; input.value = ''; }
+        else msg.textContent = '';
+      });
+    })();
+    </script>
+    <?php else: ?>
     <h2 class="font-display text-xl mb-2">Book your delivery slot</h2>
     <p class="text-xs mb-4" style="color:var(--muted-foreground)">Select a date and time window. We'll confirm your slot by SMS after payment.</p>
     <div class="grid grid-cols-4 gap-2 mb-6">
@@ -73,6 +110,7 @@ $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
         <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)"><input type="radio" name="window" value="<?= e($t) ?>" <?= $k === 0 ? 'checked' : '' ?>><?= e($t) ?></label>
       <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 
     <h2 class="font-display text-xl mb-4">Contact details</h2>
 

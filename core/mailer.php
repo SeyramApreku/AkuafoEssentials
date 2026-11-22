@@ -14,7 +14,7 @@ const MAIL_FROM_NAME = 'Akuafo & Essentials';
 
 // Sends one HTML email. Returns true/false and never throws, so a mail problem
 // can never break signup or checkout. Failures are written to the PHP error log.
-function send_mail($toEmail, $toName, $subject, $html, $text = '')
+function send_mail($toEmail, $toName, $subject, $html, $text = '', $replyTo = '')
 {
     try {
         $mail = new PHPMailer(true);
@@ -30,6 +30,7 @@ function send_mail($toEmail, $toName, $subject, $html, $text = '')
 
         $mail->setFrom(MAIL_USER, MAIL_FROM_NAME);
         $mail->addAddress($toEmail, (string)$toName);
+        if ($replyTo !== '' && filter_var($replyTo, FILTER_VALIDATE_EMAIL)) $mail->addReplyTo($replyTo);
         $mail->isHTML(true);
         $mail->Subject = $subject;
         $mail->Body    = $html;

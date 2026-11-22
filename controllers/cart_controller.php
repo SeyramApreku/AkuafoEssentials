@@ -28,6 +28,13 @@ function build_cart_item($type, $key, $qty, $sizeIdx = 0, $freq = '', $day = '',
         }
     }
     
+    if ($type === 'ent') {
+        $i = entertaining()->item((int)$key);
+        if (!$i || !(int)$i['is_available']) return null;
+        $detail = ($i['serves'] ? 'Serves ' . (int)$i['serves'] . ' · ' : '') . notice_label($i['notice_hours']) . ' notice';
+        return ['id' => 'ent-' . $i['id'], 'name' => $i['name'], 'price' => (float)$i['price'], 'qty' => min(99, $qty), 'type' => 'entertaining',
+                'image' => img($i['image'], 200, 200), 'detail' => $detail, 'notice_hours' => (int)$i['notice_hours']];
+    }
     if ($type === 'hamper') {
         foreach (catalog()->hampers() as $h) if ($h['id'] === $key)
             return ['id' => $h['id'], 'name' => $h['name'], 'price' => (float)$h['price'], 'qty' => 1, 'type' => 'preorder', 'image' => img($h['image'], 200, 200), 'detail' => $h['occasion'] . ' · Serves ' . $h['serves']];

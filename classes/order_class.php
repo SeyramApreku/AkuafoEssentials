@@ -8,8 +8,9 @@ class OrderClass extends Database
         $ref = 'AK' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
         try {
             $this->begin();
-            $this->execute('INSERT INTO aku_orders (ref,subtotal,delivery,pass_fee,total,delivery_date,time_window,pay_method,phone,email,user_id,delivery_zone,delivery_credit) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                [$ref, $data['subtotal'], $data['delivery'], $data['pass_fee'], $data['total'], $data['date'], $data['window'], $data['method'], $data['phone'], $data['email'], $data['user_id'], $data['zone'], $data['credit']]);
+            $this->execute('INSERT INTO aku_orders (ref,subtotal,delivery,pass_fee,total,delivery_date,time_window,pay_method,phone,email,user_id,delivery_zone,delivery_credit,order_type,event_address) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                [$ref, $data['subtotal'], $data['delivery'], $data['pass_fee'], $data['total'], $data['date'], $data['window'], $data['method'], $data['phone'], $data['email'], $data['user_id'], $data['zone'], $data['credit'],
+                 $data['order_type'] ?? 'standard', $data['event_address'] ?? null]);
             $orderId = $this->lastId();
             foreach ($items as $i) {
                 $this->execute('INSERT INTO aku_order_items (order_id,item_key,name,type,price,qty,detail) VALUES (?,?,?,?,?,?,?)',
@@ -49,7 +50,17 @@ class OrderClass extends Database
     public function items($orderId) { return $this->fetchAll('SELECT * FROM aku_order_items WHERE order_id = ?', [$orderId]); }
     public function byPaystackRef($p) { return $this->fetchOne('SELECT * FROM aku_orders WHERE paystack_reference = ?', [$p]); }
     public function setPaystackRef($ref, $p) { $this->execute('UPDATE aku_orders SET paystack_reference = ? WHERE ref = ?', [$p, $ref]); }
-    public function markPaid($id) { $this->execute("UPDATE aku_orders SET payment_status = 'paid', status = IF(status = 'pending', 'paid', status) WHERE id = ?", [$id]); }
+    // Payment confirmed: grocery orders become 'paid', entertaining orders become 'received' (their own status flow).
+    public function markPaid($id) { $this->execute("UPDATE aku_orders SET payment_status = 'paid', status = IF(status = 'pending', IF(order_type = 'entertaining', 'received', 'paid'), status) WHERE id = ?", [$id]); }
+    // Entertaining orders: customer changes and cancellations.
+    public function updateEvent($id, $date, $window, $address)
+    {
+        return $this->execute('UPDATE aku_orders SET delivery_date = ?, time_window = ?, event_address = ? WHERE id = ?', [$date, $window, $address, $id]);
+    }
+    public function cancel($id, $refundStatus)
+    {
+        return $this->execute("UPDATE aku_orders SET status = 'cancelled', cancelled_at = NOW(), refund_status = ? WHERE id = ? AND status <> 'cancelled'", [$refundStatus, $id]);
+    }
     public function setStatus($id, $status) { return $this->execute('UPDATE aku_orders SET status = ? WHERE id = ?', [$status, $id]); }
     public function markFailed($id) { $this->execute("UPDATE aku_orders SET payment_status = 'failed' WHERE id = ? AND payment_status <> 'paid'", [$id]); }
     // Atomically "claims" the invoice email so two callbacks can never send it twice.

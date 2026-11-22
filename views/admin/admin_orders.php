@@ -26,10 +26,10 @@ if ($order && !empty($order['user_id'])) {
         $credit = ['tier' => $mem['tier'], 'allow' => $allow, 'used' => $used, 'left' => max(0, $allow - $used)];
     }
 }
-foreach ($db->fetchAll("SELECT status, COUNT(*) AS n FROM aku_orders GROUP BY status") as $r) $counts[$r['status']] = $r['n'];
+foreach ($db->fetchAll("SELECT status, COUNT(*) AS n FROM aku_orders WHERE order_type <> 'entertaining' GROUP BY status") as $r) $counts[$r['status']] = $r['n'];
 $rows = $filter
-    ? $db->fetchAll("SELECT * FROM aku_orders WHERE status = ? ORDER BY id DESC", [$filter])
-    : $db->fetchAll("SELECT * FROM aku_orders ORDER BY id DESC");
+    ? $db->fetchAll("SELECT * FROM aku_orders WHERE order_type <> 'entertaining' AND status = ? ORDER BY id DESC", [$filter])
+    : $db->fetchAll("SELECT * FROM aku_orders WHERE order_type <> 'entertaining' ORDER BY id DESC");
 
 $pageTitle = 'Orders | Akuafo & Essentials';
 include __DIR__ . '/../layout/admin_header.php';

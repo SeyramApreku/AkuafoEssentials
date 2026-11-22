@@ -63,7 +63,8 @@ function build_invoice_html($d)
         ' . $info('Payment reference', e($d['pay_ref']) . ' (Paystack)') . '
         ' . $info('Billed to', e($d['name'] ? $d['name'] . ', ' : '') . e($d['email'])) . '
         ' . (!empty($o['phone']) ? $info('Phone', e($o['phone'])) : '') . '
-        ' . $info('Delivery', e($d['delivery']) . ' (' . e($o['delivery_zone']) . ')') . '
+        ' . $info(($o['order_type'] ?? '') === 'entertaining' ? 'Event delivery' : 'Delivery', e($d['delivery']) . ' (' . e($o['delivery_zone']) . ')') . '
+        ' . (!empty($o['event_address']) ? $info('Event address', e($o['event_address'])) : '') . '
       </table>
     </td></tr>
     <tr><td style="padding:22px 30px 0;">
@@ -97,6 +98,30 @@ function build_invoice_text($d)
     if ($d['credit'] > 0) $t .= "Membership delivery credit: -" . money($d['credit']) . "\n";
     if ($d['pass_fee'] > 0) $t .= "Delivery pass: " . money($d['pass_fee']) . "\n";
     return $t . "Total paid (GHS): " . money($o['total']) . "\n\nView online: " . email_link('views/invoice.php?ref=' . $o['ref']) . "\n";
+}
+
+// Tells the customer their order moved on. Only meaningful steps send an email.
+function send_status_email($order, $status)
+{
+    $isEvent = ($order['order_type'] ?? '') === 'entertaining';
+    $when = date('l j F', strtotime($order['delivery_date'])) . ', ' . $order['time_window'];
+    $lines = [
+        'shipped'          => ['Your order is on its way', 'Your order <strong>%s</strong> has left our farm hub and is on its way to you.'],
+        'confirmed'        => ['Your event order is confirmed', 'Good news: our kitchen has confirmed your entertaining order <strong>%s</strong> for ' . e($when) . '.'],
+        'out_for_delivery' => ['Your event order is on its way', 'Your entertaining order <strong>%s</strong> is out for delivery now.'],
+        'delivered'        => ['Your order has been delivered', 'Your order <strong>%s</strong> has been delivered. We hope you enjoy it!'],
+        'cancelled'        => ['Your order has been cancelled', 'Your order <strong>%s</strong> has been cancelled. If you have paid, our team will contact you about your refund.'],
+    ];
+    if (!isset($lines[$status]) || (!$isEvent && in_array($status, ['confirmed', 'out_for_delivery'], true))) return false;
+
+    $account = (new OrderClass())->customer($order['user_id']);
+    if (!$account) return false;
+    [$subject, $body] = $lines[$status];
+    $html = email_layout('<tr><td style="padding:24px 30px;font-size:14px;line-height:1.6;">
+        <h2 style="font-family:Georgia,serif;font-weight:normal;margin:0 0 10px;">' . e($subject) . '</h2>
+        <p>Hi ' . e($account['customer_name']) . ',</p><p>' . sprintf($body, e($order['ref'])) . '</p>
+        <p style="margin-top:18px;">' . email_button(email_link('views/orders.php'), 'View my orders') . '</p></td></tr>');
+    return send_mail($account['customer_email'], $account['customer_name'], $subject . ' (' . $order['ref'] . ')', $html);
 }
 
 // Emails the invoice for a PAID order exactly once. Safe to call more than once.

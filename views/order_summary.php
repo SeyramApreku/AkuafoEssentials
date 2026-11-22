@@ -20,8 +20,10 @@ include __DIR__ . '/layout/header.php';
 
   <div class="text-sm mb-8 space-y-1">
     <p><span style="color:var(--muted-foreground)">Reference:</span> <?= e($order['ref']) ?></p>
-    <p><span style="color:var(--muted-foreground)">Delivery:</span> <?= e(date('D, j M', strtotime($order['delivery_date']))) ?>, <?= e($order['time_window']) ?></p>
+    <?php if (($order["order_type"] ?? "") === "entertaining"): ?><p class="text-xs uppercase tracking-widest" style="color:var(--accent)">Entertaining order</p><?php endif; ?>
+    <p><span style="color:var(--muted-foreground)"><?= ($order["order_type"] ?? "") === "entertaining" ? "Event delivery" : "Delivery" ?>:</span> <?= e(date('D, j M', strtotime($order['delivery_date']))) ?>, <?= e($order['time_window']) ?></p>
     <p><span style="color:var(--muted-foreground)">Area:</span> <?= e($order['delivery_zone']) ?></p>
+    <?php if (!empty($order['event_address'])): ?><p><span style="color:var(--muted-foreground)">Event address:</span> <?= e($order['event_address']) ?></p><?php endif; ?>
     <p><span style="color:var(--muted-foreground)">Email:</span> <?= e($orders->customer($order['user_id'])['customer_email'] ?? $order['email']) ?></p>
     <?php if (!empty($order['phone'])): ?><p><span style="color:var(--muted-foreground)">Mobile number:</span> <?= e($order['phone']) ?></p><?php endif; ?>
   </div>
