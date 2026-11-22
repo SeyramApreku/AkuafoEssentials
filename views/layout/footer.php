@@ -13,7 +13,7 @@
     </div>
     <div>
       <p class="text-xs uppercase tracking-widest mb-4" style="color:var(--muted-foreground)">Contact</p>
-      <p class="text-xs leading-relaxed" style="color:var(--muted-foreground)">akuafoessentials@gmail.com<br>Accra, Ghana<br>Orders dispatched Mon-Sat</p>
+      <p class="text-xs leading-relaxed" style="color:var(--muted-foreground)"><a href="mailto:akuafoessentials@gmail.com" class="underline underline-offset-2 hover:opacity-60" style="color:var(--primary)">akuafoessentials@gmail.com</a><br>Accra, Ghana<br>Orders dispatched Mon-Sat</p>
     </div>
   </div>
   <div class="border-t px-6 py-5 flex items-center justify-between" style="border-color:var(--border)">
