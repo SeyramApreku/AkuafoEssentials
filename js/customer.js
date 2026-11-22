@@ -11,12 +11,32 @@ function togglePassword() {
 
 async function submitForm(formId, action, onSuccess) {
   try {
-    const res = await fetch(action, { method: 'POST', body: new FormData(document.getElementById(formId)) });
-    const data = await res.json();
+    const res = await fetch(action, {
+      method: 'POST',
+      body: new FormData(document.getElementById(formId))
+    });
+
+    const raw = await res.text();
+
+    let data;
+
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      console.error('Invalid JSON response:', e);
+      showMessage('The server returned an invalid response. Check the console.', false);
+      return;
+    }
+
     showMessage(data.message, data.success);
-    if (data.success) onSuccess(data);
+
+    if (data.success) {
+      onSuccess(data);
+    }
+
   } catch (e) {
-    showMessage('Something went wrong. Try again.', false);
+    console.error('Request failed:', e);
+    showMessage('Could not communicate with the server. Please try again.', false);
   }
 }
 
@@ -32,5 +52,6 @@ function registerCustomer() {
   if (ids.some(id => !document.getElementById(id).value.trim())) return showMessage('All fields are required.', false);
   if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(document.getElementById('customer_pass').value))
     return showMessage('Password must be 8+ characters with uppercase, lowercase, a number and a special character.', false);
-  submitForm('registerForm', '../actions/register_action.php', () => setTimeout(() => window.location.href = 'login.php', 1000));
+  // keep ?next=... so the customer returns to checkout after logging in
+  submitForm('registerForm', '../actions/register_action.php', () => setTimeout(() => window.location.href = 'login.php' + window.location.search, 1500));
 }

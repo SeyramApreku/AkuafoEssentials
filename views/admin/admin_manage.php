@@ -6,10 +6,34 @@ $tables = admin_tables();
 $t = $_GET['t'] ?? 'products';
 if (!isset($tables[$t])) $t = 'products';
 $db = new Database();
-$cols = $db->fetchAll("SHOW COLUMNS FROM `$t`");
-$rows = $db->fetchAll("SELECT * FROM `$t` ORDER BY id");
+$table = tbl($t);   // real table name, e.g. products => aku_products
+$cols = $db->fetchAll("SHOW COLUMNS FROM `$table`");
+
+// Get the actual column names
+$columnNames = array_column($cols, 'Field');
+
+// Find the primary identifier
+$idColumn = in_array('id', $columnNames, true) ? 'id' : null;
+
+// Retrieve records
+$isLogo  = !empty($tables[$t]['logo']);
+$choices = $tables[$t]['choices'] ?? [];
+$thumb   = $isLogo ? 'object-contain p-1' : 'object-cover';   // logos must never be cropped
+
+if (!empty($tables[$t]['order'])) {
+    $rows = $db->fetchAll("SELECT * FROM `$table` ORDER BY " . $tables[$t]['order']);   // fixed string from admin_tables()
+} elseif ($idColumn) {
+    $rows = $db->fetchAll("SELECT * FROM `$table` ORDER BY `$idColumn` DESC");
+} else {
+    $rows = $db->fetchAll("SELECT * FROM `$table`");
+}
+
+// Edit record
 $editId = (int)($_GET['edit'] ?? 0);
-$edit = $editId ? $db->fetchOne("SELECT * FROM `$t` WHERE id = ?", [$editId]) : null;
+
+$edit = ($editId && $idColumn)
+    ? $db->fetchOne("SELECT * FROM `$table` WHERE `$idColumn` = ?", [$editId])
+    : null;
 $commaCols = $tables[$t]['commas'] ?? [];
 $lineCols  = $tables[$t]['lines'] ?? [];
 $msg = $_SESSION['admin_msg'] ?? null; unset($_SESSION['admin_msg']);
@@ -20,12 +44,22 @@ $lookups = [
   'farmer'   => 'farmers',    'farmer_id'   => 'farmers',
 ];
 $opts = [];
+
 foreach ($lookups as $field => $lt) {
     if ($lt === $t) continue;
-    if (!$db->fetchAll("SHOW TABLES LIKE '$lt'")) continue;
-    $opts[$field] = $db->fetchAll("SELECT id, name FROM `$lt` ORDER BY name");
-}
+    $ltable = tbl($lt);
 
+    if (!$db->fetchAll("SHOW TABLES LIKE '$ltable'")) continue;
+
+    $lookupCols = $db->fetchAll("SHOW COLUMNS FROM `$ltable`");
+    $lookupNames = array_column($lookupCols, 'Field');
+
+    if (!in_array('id', $lookupNames) || !in_array('name', $lookupNames)) {
+        continue;
+    }
+
+    $opts[$field] = $db->fetchAll("SELECT id, name FROM `$ltable` ORDER BY name");
+}
 
 $pageTitle = 'Admin | Akuafo & Essentials';
 include __DIR__ . '/../layout/admin_header.php';
@@ -45,7 +79,7 @@ include __DIR__ . '/../layout/admin_header.php';
     <?php foreach ($cols as $c):
       $f = $c['Field'];
       if (in_array($f, ['id', 'created_at', 'updated_at'], true) || strpos($c['Extra'], 'auto_increment') !== false) continue;
-      $label = ucwords(str_replace('_', ' ', $f));
+      $label = $f === 'sort_order' ? 'Display order' : ucwords(str_replace('_', ' ', $f));
       $type = strtolower($c['Type']);
       $val = $edit[$f] ?? '';
       if ($edit && in_array($f, $commaCols, true)) $val = implode(', ', json_list($val));
@@ -57,9 +91,16 @@ if ($edit && in_array($f, $lineCols, true))  $val = implode("\n", json_list($val
         <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)"><?= e($label) ?><?= in_array($f, $commaCols, true) ? ' (comma separated)' : (in_array($f, $lineCols, true) ? ' (one per line)' : '') ?></label>
 
                 <?php if ($f === 'image'): ?>
-          <?php if ($edit && !empty($edit['image'])): ?><img src="<?= img($edit['image'], 160, 160) ?>" alt="" class="w-20 h-20 object-cover mb-2"><?php endif; ?>
+          <?php if ($edit && !empty($edit['image'])): ?><img src="<?= img($edit['image'], 160, 160) ?>" alt="" class="w-20 h-20 <?= $thumb ?> mb-2" style="background:#fff"><?php endif; ?>
           <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="text-sm">
           <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP, up to 2 MB.<?= $edit ? ' Leave empty to keep the current image.' : '' ?></p>
+        <?php elseif (isset($choices[$f])): ?>
+          <select name="<?= e($f) ?>" <?= $req ?> class="<?= $box ?>" style="border-color:var(--border)">
+            <option value="">Select <?= e(strtolower($label)) ?></option>
+            <?php foreach (array_unique(array_merge($choices[$f], $val !== '' ? [$val] : [])) as $c): ?>
+              <option value="<?= e($c) ?>" <?= (string)$val === $c ? 'selected' : '' ?>><?= e($c) ?></option>
+            <?php endforeach; ?>
+          </select>
         <?php elseif (isset($opts[$f])):
           $byId = substr($f, -3) === '_id';
           $known = false; ?>
@@ -81,6 +122,7 @@ if ($edit && in_array($f, $lineCols, true))  $val = implode("\n", json_list($val
           <textarea name="<?= e($f) ?>" rows="4" <?= $req ?> class="<?= $box ?>" style="border-color:var(--border)"><?= e($val) ?></textarea>
         <?php elseif (preg_match('/int|decimal|float|double/', $type)): ?>
           <input type="number" step="any" name="<?= e($f) ?>" value="<?= e($val) ?>" <?= $req ?> class="<?= $box ?>" style="border-color:var(--border)">
+          <?php if ($f === 'sort_order'): ?><p class="text-xs mt-1" style="color:var(--muted-foreground)">Lower numbers show first on the website (1, 2, 3…).</p><?php endif; ?>
         <?php else: ?>
           <input type="text" name="<?= e($f) ?>" value="<?= e($val) ?>" <?= $req ?> class="<?= $box ?>" style="border-color:var(--border)">
         <?php endif; ?>
@@ -95,13 +137,13 @@ if ($edit && in_array($f, $lineCols, true))  $val = implode("\n", json_list($val
   <div class="border" style="border-color:var(--border)">
     <?php foreach ($rows as $r): ?>
       <div class="flex items-center gap-4 p-4 border-b last:border-b-0" style="border-color:var(--border)">
-        <div class="w-14 h-14 shrink-0" style="background:var(--muted)"><?php if (!empty($r['image'])): ?><img src="<?= img($r['image'], 120, 120) ?>" alt="" class="w-full h-full object-cover"><?php endif; ?></div>
+        <div class="w-14 h-14 shrink-0" style="background:<?= $isLogo ? '#fff' : 'var(--muted)' ?>"><?php if (!empty($r['image'])): ?><img src="<?= img($r['image'], 120, 120) ?>" alt="" class="w-full h-full <?= $thumb ?>"><?php endif; ?></div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium truncate"><?= e($r['name'] ?? ('#' . $r['id'])) ?></p>
-          <p class="text-xs" style="color:var(--muted-foreground)"><?= e($r['category'] ?? $r['type'] ?? $r['region'] ?? '') ?></p>
+          <p class="text-xs" style="color:var(--muted-foreground)"><?= e($r['category'] ?? $r['type'] ?? $r['region'] ?? '') ?><?php if (isset($r['sort_order'])): ?> &middot; Display order <?= (int)$r['sort_order'] ?><?php endif; ?></p>
         </div>
         <a href="?t=<?= e($t) ?>&edit=<?= (int)$r['id'] ?>" class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border)">Edit</a>
-        <form method="post" action="<?= url('actions/admin_delete_action.php') ?>" data-confirm="Delete <?= e('"' . ($r['name'] ?? ('#' . $r['id'])) . '"') ?>?">
+        <form method="post" action="<?= url('actions/admin_row_delete_action.php') ?>" data-confirm="Delete <?= e('"' . ($r['name'] ?? ('#' . $r['id'])) . '"') ?>?">
           <input type="hidden" name="t" value="<?= e($t) ?>">
           <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
           <button class="text-xs font-medium px-3 py-2 border" style="border-color:var(--border);color:#b3261e">Delete</button>

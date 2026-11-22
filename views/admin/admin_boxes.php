@@ -3,11 +3,11 @@ require_once __DIR__ . '/../../core/core.php';
 require_admin();
 
 $db = new Database();
-$boxes = $db->fetchAll("SELECT * FROM boxes ORDER BY name");
+$boxes = $db->fetchAll("SELECT * FROM aku_boxes ORDER BY name");
 $editId = $_GET['edit'] ?? '';
-$edit = $editId ? $db->fetchOne("SELECT * FROM boxes WHERE id = ?", [$editId]) : null;
-$sizes = $edit ? $db->fetchAll("SELECT * FROM box_sizes WHERE box_id = ? ORDER BY idx", [$edit['id']]) : [];
-$produce = array_column($db->fetchAll("SELECT name FROM products WHERE name IS NOT NULL AND name <> '' ORDER BY name"), 'name');
+$edit = $editId ? $db->fetchOne("SELECT * FROM aku_boxes WHERE id = ?", [$editId]) : null;
+$sizes = $edit ? $db->fetchAll("SELECT * FROM aku_box_sizes WHERE box_id = ? ORDER BY idx", [$edit['id']]) : [];
+$produce = array_column($db->fetchAll("SELECT name FROM aku_products WHERE name IS NOT NULL AND name <> '' ORDER BY name"), 'name');
 $msg = $_SESSION['admin_msg'] ?? null; unset($_SESSION['admin_msg']);
 $pageTitle = 'Weekly Boxes | Admin';
 include __DIR__ . '/../layout/admin_header.php';

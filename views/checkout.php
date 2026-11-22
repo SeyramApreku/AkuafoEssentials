@@ -1,20 +1,40 @@
 <?php
+require_once __DIR__ . '/../core/core.php';
+require_login('views/checkout.php');
+require_once __DIR__ . '/../classes/order_class.php';
+$accountEmail = (new OrderClass())->customer(customer_id())['customer_email'] ?? '';
 $pageTitle = 'Checkout | Akuafo & Essentials';
 include __DIR__ . '/layout/header.php';
-$items = $cartObj->items(); $sub = $cartObj->subtotal(); $del = $cartObj->deliveryCost(); $hasPass = $cartObj->hasPass();
+$items = $cartObj->items(); $sub = $cartObj->subtotal();
+$tier = member_tier(); $creditLeft = delivery_credit_left();
+// Saved addresses (D2): the chosen address decides the zone and the delivery fee.
+require_once __DIR__ . '/../classes/delivery_class.php';
+$addresses = array_values(array_filter((new DeliveryClass())->addresses(customer_id()), fn($a) => (int)$a['deliverable']));
+$pickId    = (int)($_SESSION['checkout_address'] ?? 0); unset($_SESSION['checkout_address']);
+if (!$pickId && $addresses) $pickId = (int)$addresses[0]['id'];   // default address comes first
 $errors = $_SESSION['checkout_errors'] ?? []; unset($_SESSION['checkout_errors']);
 $hasBox = (bool)array_filter($items, fn($i) => $i['type'] === 'box');
-$base = $sub + $del;
+
+// Entertaining orders: event date picker limited by the longest notice period in the cart.
+$isEvent = $cartObj->kind() === 'entertaining';
+if ($isEvent) {
+    require_once __DIR__ . '/../controllers/entertaining_controller.php';
+    $noticeH  = ent_cart_notice_hours();
+    $earliest = ent_earliest_date($noticeH)->format('Y-m-d');
+    $latest   = (new DateTime('today'))->modify('+' . ENT_BOOK_AHEAD_DAYS . ' days')->format('Y-m-d');
+    $blocked  = ent_unavailable_dates($earliest, $latest);
+    $old      = $_SESSION['checkout_old'] ?? []; unset($_SESSION['checkout_old']);
+}
 ?>
 <div class="max-w-2xl mx-auto px-6 py-12">
-<?php if (!$items || $sub < MIN_ORDER): ?>
+<?php if (!$items || $sub < min_order()): ?>
   <div class="text-center py-12">
-    <p class="font-display text-2xl font-light mb-4"><?= $items ? 'Minimum order is ' . money(MIN_ORDER) : 'Your order is empty' ?></p>
+    <p class="font-display text-2xl font-light mb-4"><?= $items ? 'Minimum order is ' . money(min_order()) : 'Your order is empty' ?></p>
     <a href="<?= url('views/shop.php') ?>" class="text-sm" style="color:var(--primary)">← Back to shop</a>
   </div>
 <?php else: ?>
-  <a href="<?= url('views/shop.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">← Continue shopping</a>
-  <h1 class="font-display text-3xl font-light mb-8">Checkout</h1>
+  <a href="<?= url($isEvent ? 'views/preorder.php' : 'views/shop.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">← Continue shopping</a>
+  <h1 class="font-display text-3xl font-light mb-8"><?= $isEvent ? 'Entertaining checkout' : 'Checkout' ?></h1>
   <?php foreach ($errors as $err): ?><p class="text-sm mb-3 p-3" style="background:var(--muted);color:var(--accent)"><?= e($err) ?></p><?php endforeach; ?>
 
   <form method="post" action="<?= url('actions/checkout_action.php') ?>">
@@ -29,21 +49,72 @@ $base = $sub + $del;
       <?php endforeach; ?>
     </ul>
 
-    <?php if (!$hasPass): ?>
-    <label class="mb-6 p-4 border flex items-start justify-between gap-4 cursor-pointer" style="border-color:var(--secondary);background:var(--muted)">
-      <span><span class="block text-sm font-medium mb-1">✦ Add Akuafo Delivery Pass, <?= money(PASS_PRICE) ?>/month</span><span class="text-xs" style="color:var(--muted-foreground)">Unlimited free delivery on all future orders. Cancel anytime.</span></span>
-      <input type="checkbox" name="add_pass" value="1" id="add-pass" class="mt-1">
-    </label>
+    <?php if (!$tier): ?>
+    <a href="<?= url('views/membership.php') ?>" class="mb-6 p-4 border block" style="border-color:var(--secondary);background:var(--muted)">
+      <span class="block text-sm font-medium mb-1">✦ Become a member for free delivery benefits</span>
+      <span class="text-xs" style="color:var(--muted-foreground)">Members get a monthly delivery allowance, discounts and more. View membership →</span>
+    </a>
+    <?php else: ?>
+    <div class="mb-6 p-4 border" style="border-color:var(--secondary);background:var(--muted)">
+      <span class="block text-sm font-medium mb-1">✦ <?= e(ucfirst($tier)) ?> member</span>
+      <span class="text-xs" style="color:var(--muted-foreground)">Delivery credit left this month: <?= money($creditLeft) ?>. Unused credit does not roll over.</span>
+    </div>
+    <?php endif; ?>
+
+    <div class="flex items-end justify-between mb-2">
+      <h2 class="font-display text-xl">Deliver to</h2>
+      <a href="<?= url('views/addresses.php?new=1&next=' . urlencode('views/checkout.php')) ?>" class="text-xs underline">+ Add a new address</a>
+    </div>
+    <?php if (!$addresses): ?>
+      <div class="p-4 mb-6 border text-sm" style="border-color:var(--accent);background:var(--muted)">
+        You haven't saved a delivery address yet. <a href="<?= url('views/addresses.php?new=1&next=' . urlencode('views/checkout.php')) ?>" class="underline font-medium">Add your address</a> (with your GhanaPostGPS code) to continue.
+      </div>
+    <?php else: ?>
+      <div class="flex flex-col gap-2 mb-6" id="addresses">
+        <?php foreach ($addresses as $a): ?>
+          <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)">
+            <input type="radio" name="address_id" value="<?= (int)$a['id'] ?>" data-fee="<?= (float)$a['fee'] ?>" <?= (int)$a['id'] === $pickId ? 'checked' : '' ?> required>
+            <span class="font-medium"><?= e($a['label'] ?: 'Address') ?> · <?= e($a['gps_address']) ?></span>
+            <span class="block text-xs" style="color:var(--muted-foreground)"><?= e($a['area_name']) ?> (<?= e($a['zone_name']) ?>, <?= money($a['fee']) ?>)<?= $a['landmark'] ? ' · Near ' . e($a['landmark']) : '' ?> · <?= e($a['phone']) ?></span>
+          </label>
+        <?php endforeach; ?>
+      </div>
     <?php endif; ?>
 
     <div class="space-y-1.5 text-sm mb-10 p-4 border" style="border-color:var(--border)">
       <div class="flex justify-between"><span style="color:var(--muted-foreground)">Subtotal</span><span><?= money($sub) ?></span></div>
-      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span><?= $hasPass ? 'Free (Pass)' : money($del) ?></span></div>
-      <div id="pass-row" class="hidden flex justify-between"><span style="color:var(--muted-foreground)">Delivery Pass (1st month)</span><span><?= money(PASS_PRICE) ?></span></div>
-      <div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span id="grand-total" data-base="<?= $base ?>" data-pass="<?= PASS_PRICE ?>"><?= money($base) ?></span></div>
+      <div class="flex justify-between"><span style="color:var(--muted-foreground)">Delivery</span><span id="del-fee">Choose an address</span></div>
+      <div id="credit-row" class="justify-between" style="display:none"><span style="color:var(--muted-foreground)">Membership delivery credit</span><span id="del-credit"></span></div>
+      <div class="flex justify-between font-medium border-t pt-2" style="border-color:var(--border)"><span>Total</span><span id="grand-total"><?= money($sub) ?></span></div>
       <p class="text-xs pt-1" style="color:var(--muted-foreground)"><?= $hasBox ? 'Box subscriptions are billed weekly.' : 'One-off payment.' ?></p>
     </div>
 
+    <?php if ($isEvent): ?>
+    <h2 class="font-display text-xl mb-2">Your event</h2>
+    <p class="text-xs mb-4" style="color:var(--muted-foreground)">Your cart needs at least <strong><?= e(notice_label($noticeH)) ?></strong> notice, so the earliest event date is <strong><?= e(date('D j M', strtotime($earliest))) ?></strong>.</p>
+    <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)" for="event-date">Event date</label>
+    <input type="date" id="event-date" name="date" required min="<?= $earliest ?>" max="<?= $latest ?>" value="<?= e($old['date'] ?? '') ?>" class="w-full px-4 py-3 text-sm border bg-transparent mb-1" style="border-color:var(--border)">
+    <p id="date-msg" class="text-xs mb-5" style="color:var(--accent)"></p>
+    <p class="text-xs uppercase tracking-widest mb-2" style="color:var(--muted-foreground)">Delivery time</p>
+    <div class="flex flex-col gap-2 mb-6">
+      <?php foreach (time_windows() as $k => $t): ?>
+        <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)"><input type="radio" name="window" value="<?= e($t) ?>" <?= ($old['window'] ?? time_windows()[0]) === $t ? 'checked' : '' ?>><?= e($t) ?></label>
+      <?php endforeach; ?>
+    </div>
+    <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)" for="event-address">Event address (optional)</label>
+    <textarea id="event-address" name="event_address" rows="2" maxlength="255" placeholder="Venue or house address, landmark, gate colour…" class="w-full px-4 py-3 text-sm border outline-none bg-transparent mb-1" style="border-color:var(--border)"><?= e($old['event_address'] ?? '') ?></textarea>
+    <p class="text-xs mb-10" style="color:var(--muted-foreground)">Leave empty if we're delivering to your usual address in the area above. You can change the date, time or address until <?= ent_cutoff_hours() ?> hours before the event.</p>
+    <script>
+    (function () {
+      var blocked = <?= json_encode($blocked) ?>, input = document.getElementById('event-date'), msg = document.getElementById('date-msg');
+      input.addEventListener('change', function () {
+        if (blocked.indexOf(input.value) !== -1) { msg.textContent = 'We are fully booked on that date. Please choose another.'; input.value = ''; }
+        else if (input.value && input.value < input.min) { msg.textContent = 'That date is too soon for the items in your cart.'; input.value = ''; }
+        else msg.textContent = '';
+      });
+    })();
+    </script>
+    <?php else: ?>
     <h2 class="font-display text-xl mb-2">Book your delivery slot</h2>
     <p class="text-xs mb-4" style="color:var(--muted-foreground)">Select a date and time window. We'll confirm your slot by SMS after payment.</p>
     <div class="grid grid-cols-4 gap-2 mb-6">
@@ -56,48 +127,45 @@ $base = $sub + $del;
         <label class="pick relative py-3 px-4 text-sm border cursor-pointer" style="border-color:var(--border)"><input type="radio" name="window" value="<?= e($t) ?>" <?= $k === 0 ? 'checked' : '' ?>><?= e($t) ?></label>
       <?php endforeach; ?>
     </div>
-
+    <?php endif; ?>
 
     <h2 class="font-display text-xl mb-4">Contact details</h2>
 
-<div class="mb-6">
-    <label class="text-xs uppercase tracking-widest mb-2 block"
-           style="color:var(--muted-foreground)">
-        Email address
-    </label>
-
-    <input
-        type="email"
-        name="email"
-        required
-        placeholder="you@example.com"
-        class="w-full px-4 py-3 text-sm border outline-none bg-transparent"
-        style="border-color:var(--border)"
-    >
-    <p class="text-xs mt-2" style="color:var(--muted-foreground)">
-        Your email will be used for payment confirmation and your receipt.
-    </p>
-</div>
-
-
-    <h2 class="font-display text-xl mb-4">Payment</h2>
-    <div class="grid grid-cols-2 gap-2 mb-6">
-      <?php foreach ([['mtn','MTN Mobile Money','#FFCC00','#1A1916'],['vodafone','Vodafone Cash','#E60014','#fff'],['airteltigo','AirtelTigo Money','#DC143C','#fff'],['card','Debit / Credit Card','var(--muted)','var(--foreground)']] as $k => [$id,$label,$bg,$fg]): ?>
-        <label class="pick relative py-3 px-3 text-xs border flex items-center gap-2 cursor-pointer" style="border-color:var(--border)">
-          <input type="radio" name="method" value="<?= $id ?>" <?= $k === 0 ? 'checked' : '' ?>>
-          <span class="w-6 h-6 rounded flex items-center justify-center font-bold shrink-0" style="background:<?= $bg ?>;color:<?= $fg ?>"><?= $label[0] ?></span><span><?= $label ?></span>
-        </label>
-      <?php endforeach; ?>
+    <div class="mb-6">
+      <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)">Email address</label>
+      <p class="w-full px-4 py-3 text-sm border" style="border-color:var(--border);background:var(--muted)"><?= e($accountEmail) ?></p>
+      <p class="text-xs mt-2" style="color:var(--muted-foreground)">This is your account email. Your payment confirmation and invoice will be sent here.</p>
     </div>
-    <div id="mobile-fields" class="mb-6">
-      <label class="text-xs uppercase tracking-widest mb-2 block" style="color:var(--muted-foreground)">Mobile number</label>
-      <input type="tel" name="phone" placeholder="e.g. 0244 000 000" class="w-full px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
-      <p class="text-xs mt-2" style="color:var(--muted-foreground)">You'll receive a prompt on this number to approve the payment.</p>
-    </div>
-    <div id="card-fields" class="hidden mb-6 p-4 text-xs" style="background:var(--muted);color:var(--muted-foreground)">Card payments are handled by a payment gateway (e.g. Paystack). Card details are never stored on this site.</div>
 
-    <button class="w-full py-3 text-sm font-medium btn-primary">Place order →</button>
+    <p class="text-xs mb-10" style="color:var(--muted-foreground)">We'll call the phone number on your delivery address to confirm your slot. You will choose how to pay on the next step.</p>
+
+    <button class="w-full py-3 text-sm font-medium btn-primary" <?= $addresses ? '' : 'disabled style="opacity:.4"' ?>>Continue to order summary →</button>
   </form>
+
+  <script>
+  (function () {
+    var sub = <?= (float)$sub ?>, credit = <?= (float)$creditLeft ?>;
+    function m(n) { return 'GH₵ ' + (n % 1 === 0 ? n : n.toFixed(2)); }
+    function update() {
+      var o = document.querySelector('input[name=address_id]:checked');
+      var fee = o && o.dataset.fee ? parseFloat(o.dataset.fee) : null;
+      var row = document.getElementById('credit-row');
+      if (fee === null) {
+        document.getElementById('del-fee').textContent = 'Choose an address';
+        row.style.display = 'none';
+        document.getElementById('grand-total').textContent = m(sub);
+        return;
+      }
+      var use = Math.min(fee, credit);
+      document.getElementById('del-fee').textContent = m(fee);
+      row.style.display = use > 0 ? 'flex' : 'none';
+      document.getElementById('del-credit').textContent = '- ' + m(use);
+      document.getElementById('grand-total').textContent = m(sub + fee - use);
+    }
+    document.querySelectorAll('input[name=address_id]').forEach(function (r) { r.addEventListener('change', update); });
+    update();
+  })();
+  </script>
 <?php endif; ?>
 </div>
 <?php include __DIR__ . '/layout/footer.php'; ?>

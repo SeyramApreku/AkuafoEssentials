@@ -1,19 +1,32 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
-$tCur = $script === 'manage.php' ? ($_GET['t'] ?? 'products') : ($script === 'admin_boxes.php' ? 'boxes' : ($script === 'admin_orders.php' ? 'orders' : null));
+$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items', 'admin_ent_orders.php' => 'ent_orders', 'admin_ent_capacity.php' => 'ent_capacity', 'admin_ratings.php' => 'ratings', 'admin_setup.php' => 'setup', 'admin_revenue.php' => 'revenue', 'admin_inventory.php' => 'inventory'][$script] ?? null);
+if ($script === 'admin_delivery.php') $tCur = ($_GET['tab'] ?? '') === 'settings' ? 'delivery_settings' : 'delivery_zones';
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
-    ['Products',     'views/admin/manage.php?t=products',   'products'],
-    ['Categories',   'views/admin/manage.php?t=categories', 'categories'],
-    ['Regions',      'views/admin/manage.php?t=regions',    'regions'],
-    ['Farmers',      'views/admin/manage.php?t=farmers',    'farmers'],
-    ['Recipes',      'views/admin/manage.php?t=recipes',    'recipes'],
-    ['Partners',     'views/admin/manage.php?t=partners',   'partners'],
+    ['Products',     'views/admin/admin_manage.php?t=products',   'products'],
+    ['Categories',   'views/admin/admin_manage.php?t=categories', 'categories'],
+    ['Regions',      'views/admin/admin_manage.php?t=regions',    'regions'],
+    ['Farmers',      'views/admin/admin_manage.php?t=farmers',    'farmers'],
+    ['Recipes',      'views/admin/admin_manage.php?t=recipes',    'recipes'],
+    ['Partners',     'views/admin/admin_manage.php?t=partners',   'partners'],
     ['Weekly Boxes', 'views/admin/admin_boxes.php',         'boxes'],
+    ['Entertaining', 'views/admin/admin_ent_items.php',  'ent_items'],
+    ['Occasions',    'views/admin/admin_manage.php?t=ent_occasions',  'ent_occasions'],
+    ['Event Categories', 'views/admin/admin_manage.php?t=ent_categories', 'ent_categories'],
+    ['Event Orders', 'views/admin/admin_ent_orders.php',    'ent_orders'],
+    ['Event Capacity', 'views/admin/admin_ent_capacity.php', 'ent_capacity'],
     ['Orders',       'views/admin/admin_orders.php',        'orders'],
+    ['Customers',    'views/admin/admin_customers.php',     'customers'],
+    ['Delivery Zones', 'views/admin/admin_delivery.php?tab=zones', 'delivery_zones'],
+    ['Delivery Settings', 'views/admin/admin_delivery.php?tab=settings', 'delivery_settings'],
+    ['Revenue',      'views/admin/admin_revenue.php',       'revenue'],
+    ['Inventory',    'views/admin/admin_inventory.php',     'inventory'],
+    ['Database Update', 'views/admin/admin_setup.php',      'setup'],
     ['View Store',   'index.php',                           null],
 ];
 ?>
+
 <style>
   #adminOverlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .3s; }
   #adminOverlay.open { opacity: 1; pointer-events: auto; }
@@ -36,6 +49,15 @@ $links = [
   </div>
 </aside>
 <script>
+// Adds the CSRF token to every POST form on admin pages (checked by require_admin()).
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (f) {
+    if (f.querySelector('input[name="csrf"]')) return;
+    var i = document.createElement('input');
+    i.type = 'hidden'; i.name = 'csrf'; i.value = <?= json_encode(csrf_token()) ?>;
+    f.appendChild(i);
+  });
+});
 function toggleAdminNav() {
   document.getElementById('adminDrawer').classList.toggle('open');
   document.getElementById('adminOverlay').classList.toggle('open');

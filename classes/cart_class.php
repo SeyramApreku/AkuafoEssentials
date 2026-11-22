@@ -9,7 +9,7 @@ class CartClass
     public function deliveryCost()
     {
         if ($this->hasPass()) return 0;
-        return $this->subtotal() >= MIN_ORDER ? DELIVERY_FEE : 0;
+        return $this->subtotal() >= min_order() ? DELIVERY_FEE : 0;
     }
     public function add($item)
     {
@@ -26,4 +26,14 @@ class CartClass
     }
     public function setPass($on) { $_SESSION['has_pass'] = (bool)$on; }
     public function clear() { unset($_SESSION['cart']); }
+
+    // Entertaining orders are checked out separately from groceries/boxes, so a cart holds one kind.
+    // Returns 'entertaining', 'standard', or null when empty.
+    public function kind()
+    {
+        $items = $this->items();
+        if (!$items) return null;
+        return (reset($items)['type'] ?? '') === 'entertaining' ? 'entertaining' : 'standard';
+    }
+    public static function kindOf($item) { return ($item['type'] ?? '') === 'entertaining' ? 'entertaining' : 'standard'; }
 }

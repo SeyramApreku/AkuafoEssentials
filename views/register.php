@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../core/core.php';
-if (!empty($_SESSION['customer_id'])) redirect(url('index.php'));
+$next = safe_next($_GET['next'] ?? '');
+if (!empty($_SESSION['customer_id'])) redirect(url($next ?: 'index.php'));
+$nextQs = $next ? '?next=' . urlencode($next) : '';
 $inputStyle = 'px-4 py-3 text-sm border outline-none bg-transparent';
 ?>
 <!DOCTYPE html>
@@ -30,7 +32,7 @@ $inputStyle = 'px-4 py-3 text-sm border outline-none bg-transparent';
       <button type="submit" class="px-5 py-3 text-sm font-medium btn-primary">Register</button>
     </form>
     <p id="formMessage" class="text-sm mt-4"></p>
-    <p class="text-sm mt-6" style="color:var(--muted-foreground)">Already have an account? <a href="login.php" class="font-medium" style="color:var(--primary)">Log in</a></p>
+    <p class="text-sm mt-6" style="color:var(--muted-foreground)">Already have an account? <a href="login.php<?= e($nextQs) ?>" class="font-medium" style="color:var(--primary)">Log in</a></p>
   </div>
   <script src="<?= url('js/customer.js') ?>"></script>
 </body>

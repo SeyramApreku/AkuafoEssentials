@@ -26,7 +26,7 @@ include __DIR__ . '/views/layout/header.php';
 
   <section class="border-b border-t" style="border-color:var(--border);background:var(--muted)">
     <div class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-      <?php foreach ([['Direct from farmers','No market chain markup'],['Weekly box delivery','Recurring mobile money or card'],['Fully traceable','Farm, region, and farmer named'],['Pre-order for events','Weddings, Christmas, gatherings']] as [$l,$d]): ?>
+      <?php foreach ([['Direct from Local Farmers','No market chain markup'],['Weekly box delivery','Recurring mobile money or card'],['Fully traceable','Farm, region, and farmer named'],['Pre-order for events','Weddings, Christmas, gatherings']] as [$l,$d]): ?>
         <div class="flex flex-col gap-1"><span class="text-sm font-medium"><?= $l ?></span><span class="text-xs" style="color:var(--muted-foreground)"><?= $d ?></span></div>
       <?php endforeach; ?>
     </div>
@@ -92,17 +92,7 @@ include __DIR__ . '/views/layout/header.php';
       <a href="<?= url('views/shop.php') ?>" class="text-sm font-medium hidden md:block" style="color:var(--primary)">View all →</a>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <?php foreach ($products as $p): ?>
-      <a href="<?= url('views/product.php?id=' . $p['id']) ?>" class="group block">
-        <div class="aspect-square overflow-hidden mb-3 relative" style="background:var(--muted)">
-          <img src="<?= img($p['image']) ?>" alt="<?= e($p['name']) ?>" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
-          <?php if ($p['badge']): ?><span class="absolute top-2 left-2 text-xs px-2 py-0.5 font-medium" style="background:var(--accent);color:var(--accent-foreground)"><?= e($p['badge']) ?></span><?php endif; ?>
-        </div>
-        <p class="text-xs mb-0.5" style="color:var(--muted-foreground)"><?= e($p['region']) ?></p>
-        <p class="font-medium text-sm mb-1"><?= e($p['name']) ?></p>
-        <p class="text-sm font-display"><?= money($p['price']) ?></p>
-      </a>
-      <?php endforeach; ?>
+      <?php foreach ($products as $p) include __DIR__ . '/views/layout/product_card.php'; ?>
     </div>
   </section>
 

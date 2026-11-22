@@ -4,32 +4,115 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');   // never show errors on screen
 ini_set('log_errors', '1');       // still write them to the log
 
-set_exception_handler(function ($e) {
-    error_log($e);
-    http_response_code(500);
+ini_set('html_errors', '0');
+
+// Visitors never see technical error details. Every error gets a short reference code that is
+// written to the PHP error log together with the full details, so it can be looked up later.
+function friendly_error_page($ref, $schemaProblem = false)
+{
+    if (!headers_sent()) http_response_code(500);
+    $msg = "Sorry, something went wrong. Please try again in a moment. (Reference $ref)";
     foreach (headers_list() as $h) {
-        if (stripos($h, 'application/json') !== false) {
-            echo json_encode(['success' => false, 'message' => 'Something went wrong. Please try again.']);
-            return;
-        }
+        if (stripos($h, 'application/json') !== false) { echo json_encode(['success' => false, 'message' => $msg]); return; }
     }
-    echo 'Something went wrong. Please try again.';
+    $admin = (int)($_SESSION['user_role'] ?? 0) === 1;
+    $base  = defined('BASE_URL') ? BASE_URL : '';
+    echo '<div style="max-width:520px;margin:12vh auto;padding:32px;font-family:Arial,sans-serif;background:#FAF7F0;border:1px solid #D5CBBA;color:#1A1916;text-align:center">'
+       . '<p style="font-family:Georgia,serif;font-size:26px;margin:0 0 12px">Something went wrong</p>'
+       . '<p style="font-size:14px;color:#6B6050;line-height:1.6;margin:0 0 20px">Sorry about that. Please go back and try again in a moment. If it keeps happening, contact us and quote reference <strong>' . $ref . '</strong>.</p>'
+       // A missing table/column means the database hasn't been updated yet: point admins (only) to the fix.
+       . ($admin && $schemaProblem ? '<p style="font-size:14px;margin:0 0 20px;padding:12px;background:#E9D9A8">Admin: the database needs updating. <a href="' . htmlspecialchars($base) . '/views/admin/admin_setup.php" style="color:#B24008">Open Database update</a> and click <strong>Update database</strong>.</p>' : '')
+       . '<a href="' . htmlspecialchars($base) . '/index.php" style="display:inline-block;background:#2B4A12;color:#F4EFE4;padding:12px 26px;text-decoration:none;font-size:14px">Back to the shop</a></div>';
+}
+
+set_exception_handler(function ($e) {
+    $ref = strtoupper(bin2hex(random_bytes(3)));
+    error_log("[error $ref] " . $e);
+    friendly_error_page($ref, $e instanceof PDOException && in_array($e->getCode(), ['42S02', '42S22'], true));
 });
 
+// Warnings and notices: log them, never print them (even if the server's php.ini says display_errors=On).
+set_error_handler(function ($no, $str, $file, $line) {
+    if (!(error_reporting() & $no)) return true;   // silenced with @
+    error_log("PHP warning: $str in $file:$line");
+    return true;
+});
 
+// Fatal errors can't be caught by the handlers above: show the same friendly page instead of PHP's message.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_RECOVERABLE_ERROR], true)) return;
+    $ref = strtoupper(bin2hex(random_bytes(3)));
+    error_log("[error $ref] Fatal: {$e['message']} in {$e['file']}:{$e['line']}");
+    while (ob_get_level()) ob_end_clean();
+    friendly_error_page($ref);
+});
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../settings/db_class.php';
 
-const MIN_ORDER = 80;
-const DELIVERY_FEE = 12;
+// BASE_URL normally comes from settings/db_cred.php.
+// Local:  define('BASE_URL', '/akuafo');
+// Server: define('BASE_URL', '/~elisa.okyere/akuafo');
+if (!defined('BASE_URL')) define('BASE_URL', '/akuafo');
+
+const DELIVERY_FEE = 12;   // shown in the cart drawer until checkout knows the zone (replaced in D4)
 const PASS_PRICE = 49;
 
 function e($s) { return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 function url($path = '') { return BASE_URL . '/' . ltrim($path, '/'); }
 function money($n) { return 'GH₵ ' . number_format($n, floor($n) == $n ? 0 : 2); }
 function redirect($path) { header('Location: ' . $path); exit; }
+
+// Absolute URL for links inside emails, e.g. http://169.239.251.102:442/~elisa.okyere/akuafo/views/shop.php
+// Only known hosts are trusted, so a forged Host header can't put a fake domain into an email.
+function site_url($path = '')
+{
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    if ($host !== '169.239.251.102:442' && !preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host)) $host = 'localhost';
+    $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    return ($https ? 'https' : 'http') . '://' . $host . url($path);
+}
+
+// Only site-relative pages are allowed as a "go back here after login" target (no open redirects).
+function safe_next($next)
+{
+    $next = (string)$next;
+    return preg_match('#^(index\.php|views/[a-z_]+\.php)(\?[A-Za-z0-9_=&%.\-]*)?$#', $next) ? $next : '';
+}
+
+function customer_id() { return (int)($_SESSION['customer_id'] ?? 0); }
+
+// Sends logged-out visitors to the login page, then back to $next after they log in.
+function require_login($next = '')
+{
+    if (customer_id() > 0) return;
+    $next = safe_next($next);
+    redirect(url('views/login.php' . ($next ? '?next=' . urlencode($next) : '')));
+}
+
+// Sends the finished page to the browser and closes the connection, so slow work
+// (like emailing) can carry on afterwards without the customer waiting for it.
+// The page must have called ob_start() before any output.
+function finish_response()
+{
+    ignore_user_abort(true);
+    session_write_close();                       // don't block the customer's next click
+    if (function_exists('fastcgi_finish_request')) { while (ob_get_level()) ob_end_flush(); fastcgi_finish_request(); return; }
+    if (!headers_sent()) {
+        header('Connection: close');
+        if (!ini_get('zlib.output_compression')) header('Content-Length: ' . ob_get_length());
+    }
+    while (ob_get_level()) ob_end_flush();
+    flush();
+}
+
+// True only when the order belongs to the logged-in customer (guest orders with no owner never match).
+function owns_order($order) { return $order && customer_id() > 0 && (int)$order['user_id'] === customer_id(); }
 function json_list($v) { return json_decode($v ?? '[]', true) ?: []; }
+
+// Adds the shared-database prefix to a table name: tbl('products') => 'aku_products'
+function tbl($name) { return 'aku_' . $name; }
 
 function nav_items()
 {
@@ -65,6 +148,13 @@ function frequencies()
 
 function delivery_days() { return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; }
 
+// Benefits for one tier by name ('gold' => the Gold row of membership_tiers()), or null.
+function tier_info($name)
+{
+    foreach (membership_tiers() as $m) if (strtolower($m['name']) === strtolower((string)$name)) return $m;
+    return null;
+}
+
 function member_tier()
 {
     static $t = false;
@@ -72,13 +162,69 @@ function member_tier()
         $t = null;
         if (!empty($_SESSION['customer_id'])) {
             $r = (new Database())->fetchOne(
-                "SELECT tier FROM memberships WHERE user_id = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY id DESC LIMIT 1",
+                "SELECT tier FROM aku_memberships WHERE user_id = ? AND status = 'active' AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY id DESC LIMIT 1",
                 [$_SESSION['customer_id']]
             );
             $t = $r['tier'] ?? null;
         }
     }
     return $t;
+}
+
+// ---------- Site settings (aku_settings), editable in Admin > Delivery Settings ----------
+function app_setting($name, $default)
+{
+    static $cache = null;
+    if ($cache === null) {
+        try { $cache = array_column((new Database())->fetchAll('SELECT name, value FROM aku_settings'), 'value', 'name'); }
+        catch (Throwable $e) { $cache = []; }   // table not created yet: use the defaults
+    }
+    return $cache[$name] ?? $default;
+}
+function min_order()               { return (float)app_setting('min_order', 80); }
+function free_delivery_threshold() { return (float)app_setting('free_delivery_threshold', 500); }   // 0 = no free delivery
+function order_cutoff_time()       { return (string)app_setting('order_cutoff_time', '20:00'); }   // order by this time for next-day delivery
+function zone_day_names()          { return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; }
+
+// GhanaPostGPS digital address: 2 letters, then 3 or 4 digits, then 4 digits (GA-123-4567, GA-1234-5678).
+// Returns the tidy uppercase form, or null if it isn't valid. Accepts spaces or missing dashes.
+function normalize_gps($s)
+{
+    $s = strtoupper(preg_replace('/[\s.]+/', '', (string)$s));
+    // Dashes optional: GA1234567 => GA-123-4567, GA12345678 => GA-1234-5678.
+    return preg_match('/^([A-Z]{2})-?(\d{3,4})-?(\d{4})$/', $s, $m) ? "$m[1]-$m[2]-$m[3]" : null;
+}
+
+// "GA-123-4567, Osu · near Shell, Oxford St" for an order (empty for orders placed before saved addresses).
+function order_address_line($o)
+{
+    if (empty($o['gps_address'])) return '';
+    return $o['gps_address'] . ', ' . $o['area_name'] . (!empty($o['landmark']) ? ' · near ' . $o['landmark'] : '');
+}
+
+// Active zones only: an inactive zone disappears from checkout.
+function delivery_zones() { return (new Database())->fetchAll('SELECT id, name, fee, delivery_days FROM aku_delivery_zones WHERE is_active = 1 ORDER BY name'); }
+
+function delivery_credit_left()
+{
+    $tier = member_tier();
+    if (!$tier) return 0;
+    $allow = 0;
+    foreach (membership_tiers() as $m) if (strtolower($m['name']) === strtolower($tier)) $allow = $m['delivery'];
+    $r = (new Database())->fetchOne(
+        "SELECT COALESCE(SUM(delivery_credit), 0) AS used FROM aku_orders WHERE user_id = ? AND status <> 'cancelled' AND payment_status = 'paid' AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')",
+        [$_SESSION['customer_id']]
+    );
+    return max(0, $allow - (float)$r['used']);
+}
+
+function delivery_quote($zoneId)
+{
+    $z = (new Database())->fetchOne('SELECT id, name, fee FROM aku_delivery_zones WHERE id = ? AND is_active = 1', [(int)$zoneId]);
+    if (!$z) return null;
+    $fee = (float)$z['fee'];
+    $credit = min($fee, delivery_credit_left());
+    return ['zone' => $z['name'], 'fee' => $fee, 'credit' => $credit, 'pay' => $fee - $credit];
 }
 
 function tier_star($tier, $size = 16)
@@ -91,21 +237,71 @@ function tier_star($tier, $size = 16)
     return '';
 }
 
-function partners() { return (new Database())->fetchAll('SELECT * FROM partners ORDER BY sort_order, id'); }
+function partners() { return (new Database())->fetchAll('SELECT * FROM aku_partners ORDER BY sort_order, id'); }
 
 function is_admin() { return (int)($_SESSION['user_role'] ?? 0) === 1; }
-function require_admin() { if (!is_admin()) redirect(url('index.php')); }
 
+// Every admin form POST must carry the session's CSRF token (added by views/layout/admin_menu.php),
+// so another website can't trick a logged-in admin's browser into changing data.
+function require_admin()
+{
+    if (!is_admin()) redirect(url('index.php'));
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_valid()) {
+        http_response_code(400);
+        exit('Your session has expired. Go back, refresh the page and try again.');
+    }
+}
+
+// ---------- CSRF ----------
+function csrf_token()
+{
+    if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    return $_SESSION['csrf'];
+}
+function csrf_field() { return '<input type="hidden" name="csrf" value="' . e(csrf_token()) . '">'; }
+function csrf_valid()
+{
+    $t = $_POST['csrf'] ?? '';
+    return is_string($t) && !empty($_SESSION['csrf']) && hash_equals($_SESSION['csrf'], $t);
+}
+
+// Order status flow (aku_orders.status). Payment itself is tracked in payment_status.
+function order_statuses() { return ['pending', 'paid', 'shipped', 'delivered', 'cancelled']; }
+// Entertaining orders have their own flow (payment confirmed => 'received').
+function ent_order_statuses() { return ['pending', 'received', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']; }
+
+// Keys are the unprefixed names. Wherever the admin code puts a key into SQL,
+// wrap it with tbl(), e.g. "SELECT * FROM " . tbl($table)
 function admin_tables()
 {
     return [
         'products' => ['label' => 'Products', 'dir' => 'products'],
         'farmers'  => ['label' => 'Farmers',  'dir' => 'farmers',  'commas' => ['produce', 'certifications']],
         'recipes'  => ['label' => 'Recipes',  'dir' => 'recipes',  'commas' => ['produce', 'tags'], 'lines' => ['ingredients', 'method']],
-        'partners' => ['label' => 'Partners', 'dir' => 'partners'],
+        // logo: show images uncropped. order: list in the same order as the home page.
+        // choices: dropdown options (an existing value outside the list is still kept).
+        'partners' => ['label' => 'Partners', 'dir' => 'partners', 'logo' => true, 'order' => 'sort_order, id',
+                       'choices' => ['type' => ['Restaurant', 'Hotel', 'Catering', 'Cafe', 'Bar', 'Lodge']]],
         'categories' => ['label' => 'Categories'],
         'regions'    => ['label' => 'Regions'],
+        // Entertaining section (items themselves have their own page: views/admin/admin_ent_items.php)
+        'ent_occasions'  => ['label' => 'Occasions',        'dir' => 'entertaining', 'order' => 'sort_order, id'],
+        'ent_categories' => ['label' => 'Event categories', 'dir' => 'entertaining', 'order' => 'sort_order, id'],
     ];
+}
+
+// Dietary tags for entertaining items (keys match the SET column aku_ent_items.dietary).
+function ent_dietary_tags()
+{
+    return ['vegetarian' => 'Vegetarian', 'vegan' => 'Vegan', 'contains_nuts' => 'Contains nuts', 'spicy' => 'Spicy'];
+}
+
+// "48 hours" / "5 days" for a notice period stored in hours.
+function notice_label($hours)
+{
+    $hours = (int)$hours;
+    if ($hours > 48 && $hours % 24 === 0) return ($hours / 24) . ' days';   // 72 => "3 days", 48 stays "48 hours"
+    return $hours . ' hours';
 }
 
 // Returns a path on success, null if no file was sent, false if the file is invalid
@@ -123,6 +319,9 @@ function save_image($file, $dir)
 
 function delete_image($path)
 {
+    $path = (string)$path;
+    // Shared placeholder images (images/*/placeholder.*) are used by many rows: never delete them.
+    if (strpos(basename($path), 'placeholder.') === 0) return;
     if ($path && strpos($path, 'images/') === 0 && strpos($path, '..') === false) {
         $f = __DIR__ . '/../' . $path;
         if (is_file($f)) unlink($f);
@@ -140,12 +339,8 @@ function testimonials()
 
 function img($src, $w = 600, $h = 600)
 {
+    $src = (string)$src;   // avoids the strpos(null) deprecation when an image is missing
     if (preg_match('#^https?://#', $src)) return $src;
     if (strpos($src, 'images/') === 0) return url($src);
     return "https://images.unsplash.com/$src?w=$w&h=$h&fit=crop&auto=format";
-}
-
-$publicPages = ['login.php', 'register.php', 'login_action.php', 'register_action.php'];
-if (empty($_SESSION['customer_id']) && !in_array(basename($_SERVER['SCRIPT_NAME']), $publicPages, true)) {
-    redirect(url('views/login.php'));
 }
