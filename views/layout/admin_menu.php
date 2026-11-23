@@ -45,7 +45,7 @@ $links = [
   </nav>
   <div class="pt-5 border-t" style="border-color:rgba(255,255,255,.2)">
     <p class="text-xs uppercase tracking-widest mb-3 opacity-70"><?= e($navName) ?></p>
-    <a href="<?= url('actions/logout_action.php') ?>" class="text-xs font-medium uppercase tracking-widest">Logout</a>
+    <form method="post" action="<?= url('actions/logout_action.php') ?>"><?= csrf_field() ?><button class="text-xs font-medium uppercase tracking-widest">Logout</button></form>
   </div>
 </aside>
 <script>
@@ -90,6 +90,7 @@ document.addEventListener('keydown', function (e) {
 </div>
 <script>
 (function () {
+  if (window.akuConfirm) return;   // on public pages the site-wide dialog in header.php already handles data-confirm
   var modal = document.getElementById('confirmModal');
   var text = document.getElementById('confirmText');
   var pending = null;

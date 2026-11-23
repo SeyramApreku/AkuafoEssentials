@@ -48,13 +48,66 @@ register_shutdown_function(function () {
     friendly_error_page($ref);
 });
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+// ---------- Security: headers and session cookie (before anything is sent) ----------
+const SESSION_IDLE_LIMIT = 7200;   // log out after 2 hours without activity
+$isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Frame-Options: SAMEORIGIN');                       // no clickjacking: other sites can't frame our pages
+    header("Content-Security-Policy: frame-ancestors 'self'");
+    header('X-Content-Type-Options: nosniff');                   // browsers must not guess file types
+    header('Referrer-Policy: strict-origin-when-cross-origin');  // don't leak full URLs (order refs) to other sites
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+    header_remove('X-Powered-By');                               // don't advertise the PHP version
+}
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.use_strict_mode', '1');    // ignore session IDs the server didn't create (session fixation)
+    ini_set('session.use_only_cookies', '1');   // never accept a session ID from the URL
+    session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $isHttps, 'httponly' => true, 'samesite' => 'Lax']);
+    session_start();
+}
+// Idle timeout: sign the account out (the cart is kept) after SESSION_IDLE_LIMIT seconds of inactivity.
+if (!empty($_SESSION['customer_id']) && isset($_SESSION['last_seen']) && time() - $_SESSION['last_seen'] > SESSION_IDLE_LIMIT) {
+    unset($_SESSION['customer_id'], $_SESSION['customer_name'], $_SESSION['customer_email'], $_SESSION['user_role'], $_SESSION['csrf']);
+    session_regenerate_id(true);
+}
+$_SESSION['last_seen'] = time();
 require_once __DIR__ . '/../settings/db_class.php';
 
 // BASE_URL normally comes from settings/db_cred.php.
 // Local:  define('BASE_URL', '/akuafo');
 // Server: define('BASE_URL', '/~elisa.okyere/akuafo');
 if (!defined('BASE_URL')) define('BASE_URL', '/akuafo');
+
+// ---------- Security: every form posted to actions/ must carry this session's CSRF token ----------
+// (Forms get the token automatically: views/layout/header.php and admin_menu.php add it to every POST form.)
+// ---------- Security: login lockout ----------
+const LOGIN_MAX_FAILS_EMAIL = 5;    // per email address
+const LOGIN_MAX_FAILS_IP    = 20;   // per IP (higher: offices and mobile networks share IPs)
+const LOGIN_LOCK_MINUTES    = 15;
+// Pure decision, used by actions/login_action.php (and the unit tests).
+function login_locked($emailFails, $ipFails)
+{
+    return (int)$emailFails >= LOGIN_MAX_FAILS_EMAIL || (int)$ipFails >= LOGIN_MAX_FAILS_IP;
+}
+function client_ip() { return substr((string)($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45); }
+
+function csrf_reject()
+{
+    http_response_code(400);
+    $msg = 'Your session expired or the form was sent from somewhere else. Please go back, refresh the page and try again.';
+    if (stripos($_SERVER['HTTP_ACCEPT'] ?? '', 'json') !== false || !empty($_SERVER['HTTP_X_REQUESTED_WITH']) || preg_match('/(login|register)_action\.php$/', $_SERVER['SCRIPT_NAME'] ?? '')) {
+        header('Content-Type: application/json');
+        exit(json_encode(['success' => false, 'message' => $msg]));
+    }
+    exit('<div style="max-width:520px;margin:12vh auto;padding:32px;font-family:Arial,sans-serif;background:#FAF7F0;border:1px solid #D5CBBA;text-align:center">'
+       . '<p style="font-family:Georgia,serif;font-size:24px;margin:0 0 12px">Please try that again</p><p style="font-size:14px;color:#6B6050;line-height:1.6">' . $msg . '</p>'
+       . '<a href="javascript:history.back()" style="display:inline-block;margin-top:12px;background:#2B4A12;color:#F4EFE4;padding:12px 26px;text-decoration:none;font-size:14px">Go back</a></div>');
+}
+if (PHP_SAPI !== 'cli' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && strpos(str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? ''), '/actions/') !== false
+    && !csrf_valid()) {
+    csrf_reject();
+}
 
 const DELIVERY_FEE = 12;   // shown in the cart drawer until checkout knows the zone (replaced in D4)
 const PASS_PRICE = 49;

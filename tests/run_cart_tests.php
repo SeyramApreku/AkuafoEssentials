@@ -3,6 +3,9 @@
 error_reporting(E_ALL);
 const MIN_ORDER = 100;
 const DELIVERY_FEE = 15;
+// The minimum order is now an admin setting (min_order() in core/core.php reads the database).
+// This test only loads the cart class, so it supplies its own fixed value instead.
+function min_order() { return MIN_ORDER; }
 require_once __DIR__ . '/../classes/cart_class.php';
 $_SESSION = [];
 $cart = new CartClass();

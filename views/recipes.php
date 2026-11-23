@@ -20,7 +20,7 @@ if ($recipe): ?>
       <h2 class="font-display text-xl mb-4">Ingredients</h2>
       <ul class="space-y-2 mb-8"><?php foreach ($recipe['ingredients'] as $ing): ?><li class="text-sm flex items-start gap-2" style="color:var(--muted-foreground)"><span class="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style="background:var(--accent)"></span><?= e($ing) ?></li><?php endforeach; ?></ul>
       <h3 class="text-xs uppercase tracking-widest mb-3" style="color:var(--muted-foreground)">Produce used</h3>
-      <div class="flex flex-wrap gap-2"><?php foreach ($recipe['produce'] as $p): ?><span class="text-xs px-2.5 py-1 border" style="border-color:var(--border)"><?= e($p) ?></span><?php endforeach; ?></div>
+      <div class="flex flex-wrap gap-2"><?php foreach ($recipe['produce'] as $p): ?><a href="<?= e(produce_url($p)) ?>" class="text-xs px-2.5 py-1 border hover:underline underline-offset-2" style="border-color:var(--border)" title="Shop <?= e($p) ?>"><?= e($p) ?> →</a><?php endforeach; ?></div>
     </div>
     <div class="md:col-span-2">
       <h2 class="font-display text-xl mb-6">Method</h2>
