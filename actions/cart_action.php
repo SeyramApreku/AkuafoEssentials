@@ -53,4 +53,16 @@ switch ($act) {
         if ($item) cart_add_checked($item);
         break;
 }
-redirect($return);
+
+// Updated in the background by js/app.js (no page reload): send back the re-drawn drawer and the item count.
+if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'fetch') {
+    unset($_SESSION['cart_open']);
+    $cartObj = cart(); $here = $return; $autoOpen = false;
+    ob_start();
+    include __DIR__ . '/../views/layout/cart_drawer.php';
+    $html = ob_get_clean();
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'count' => cart()->count(), 'html' => $html]);
+    exit;
+}
+redirect($return);   // without JavaScript: the normal form post + redirect still works

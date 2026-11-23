@@ -22,7 +22,7 @@ foreach ($setup->steps() as $step) {
     $unsafe = array_filter($stmts, fn($s) =>
         preg_match('/^CREATE TABLE (?!IF NOT EXISTS)/i', $s)       // must be CREATE TABLE IF NOT EXISTS
         || preg_match('/^ALTER TABLE/i', $s)                       // columns are added through the guarded PREPARE pattern
-        || preg_match('/^INSERT INTO (?!aku_delivery_areas)/i', $s) && !preg_match('/ON DUPLICATE KEY/i', $s)
+        || preg_match('/^INSERT INTO /i', $s) && !preg_match('/ON DUPLICATE KEY|WHERE @\w+ = 0\s*$/i', $s)   // plain INSERT needs a guard
         || preg_match('/^(DROP|TRUNCATE|DELETE)\b/i', $s));        // never removes data
     checkTest($step['file'] . ' has no unguarded or destructive statements', array_values($unsafe), []);
 }

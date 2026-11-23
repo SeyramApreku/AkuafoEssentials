@@ -1,6 +1,6 @@
 <?php
 $script = basename($_SERVER['SCRIPT_NAME']);
-$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items', 'admin_ent_orders.php' => 'ent_orders', 'admin_ent_capacity.php' => 'ent_capacity', 'admin_ratings.php' => 'ratings', 'admin_setup.php' => 'setup', 'admin_revenue.php' => 'revenue', 'admin_inventory.php' => 'inventory'][$script] ?? null);
+$tCur = $script === 'admin_manage.php' ? ($_GET['t'] ?? 'products') : (['admin_boxes.php' => 'boxes', 'admin_orders.php' => 'orders', 'admin_customers.php' => 'customers', 'admin_ent_items.php' => 'ent_items', 'admin_ent_orders.php' => 'ent_orders', 'admin_ent_capacity.php' => 'ent_capacity', 'admin_ratings.php' => 'ratings', 'admin_setup.php' => 'setup', 'admin_revenue.php' => 'revenue', 'admin_inventory.php' => 'inventory', 'admin_partners.php' => 'partners'][$script] ?? null);
 if ($script === 'admin_delivery.php') $tCur = ($_GET['tab'] ?? '') === 'settings' ? 'delivery_settings' : 'delivery_zones';
 $navName = $_SESSION['customer_name'] ?? 'Admin';
 $links = [
@@ -9,7 +9,7 @@ $links = [
     ['Regions',      'views/admin/admin_manage.php?t=regions',    'regions'],
     ['Farmers',      'views/admin/admin_manage.php?t=farmers',    'farmers'],
     ['Recipes',      'views/admin/admin_manage.php?t=recipes',    'recipes'],
-    ['Partners',     'views/admin/admin_manage.php?t=partners',   'partners'],
+    ['Partners',     'views/admin/admin_partners.php',      'partners'],
     ['Weekly Boxes', 'views/admin/admin_boxes.php',         'boxes'],
     ['Entertaining', 'views/admin/admin_ent_items.php',  'ent_items'],
     ['Occasions',    'views/admin/admin_manage.php?t=ent_occasions',  'ent_occasions'],
@@ -23,8 +23,10 @@ $links = [
     ['Revenue',      'views/admin/admin_revenue.php',       'revenue'],
     ['Inventory',    'views/admin/admin_inventory.php',     'inventory'],
     ['Database Update', 'views/admin/admin_setup.php',      'setup'],
-    ['View Store',   'index.php',                           null],
 ];
+// Alphabetical order (new pages slot in automatically); "View Store" always last since it leaves the admin.
+usort($links, fn($a, $b) => strcasecmp($a[0], $b[0]));
+$links[] = ['View Store', 'index.php', null];
 ?>
 
 <style>

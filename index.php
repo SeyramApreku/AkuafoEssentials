@@ -142,7 +142,7 @@ include __DIR__ . '/views/layout/header.php';
         <?php foreach (partners() as $p): ?>
 <div class="p-5" style="background:var(--background)">
   <?php if (!empty($p['image'])): ?><img src="<?= img($p['image']) ?>" alt="<?= e($p['name']) ?>" class="h-12 object-contain mb-3"><?php endif; ?>
-  <p class="font-display text-lg font-light leading-snug mb-1"><?= e($p['name']) ?></p>
+  <p class="font-display text-lg font-light leading-snug mb-1"><?= e(($p['restaurant_name'] ?? '') ?: $p['name']) ?></p>
   <p class="text-xs uppercase tracking-widest" style="color:var(--accent)"><?= e($p['type']) ?></p>
 </div>
 <?php endforeach; ?>

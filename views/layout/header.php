@@ -85,7 +85,7 @@ $here = $_SERVER['REQUEST_URI'];
 
       <button data-open-cart aria-label="Open cart" class="flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 btn-primary">
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/></svg>
-  <?php if ($cartObj->count() > 0): ?><span class="w-4 h-4 rounded-full text-xs flex items-center justify-center font-bold" style="background:var(--accent);color:var(--accent-foreground)"><?= $cartObj->count() ?></span><?php endif; ?>
+  <span id="cart-count" class="w-4 h-4 rounded-full text-xs items-center justify-center font-bold" style="background:var(--accent);color:var(--accent-foreground);display:<?= $cartObj->count() > 0 ? 'flex' : 'none' ?>"><?= $cartObj->count() ?></span>
 </button>
       <button id="menu-btn" class="lg:hidden p-1"><div class="w-5 flex flex-col gap-[5px]"><span class="block h-px w-full bg-current"></span><span class="block h-px w-3/4 bg-current"></span><span class="block h-px w-full bg-current"></span></div></button>
     </div>

@@ -358,16 +358,19 @@ function notice_label($hours)
 }
 
 // Returns a path on success, null if no file was sent, false if the file is invalid
-function save_image($file, $dir)
+// $root: 'images' (catalogue pictures) or 'uploads' (e.g. partner portraits in uploads/partners/).
+function save_image($file, $dir, $root = 'images')
 {
     if (empty($file['name']) || $file['error'] !== UPLOAD_ERR_OK) return null;
     if ($file['size'] > 2 * 1024 * 1024) return false;
     $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][mime_content_type($file['tmp_name'])] ?? null;
-    if (!$ext) return false;
-    $folder = __DIR__ . '/../images/' . $dir;
-    if (!is_dir($folder)) mkdir($folder, 0777, true);
+    if (!$ext || @getimagesize($file['tmp_name']) === false) return false;   // must really be a picture
+    $root = $root === 'uploads' ? 'uploads' : 'images';
+    $dir  = preg_replace('/[^a-z0-9_-]/', '', strtolower($dir));
+    $folder = __DIR__ . "/../$root/" . $dir;
+    if (!is_dir($folder)) mkdir($folder, 0755, true);
     $name = bin2hex(random_bytes(8)) . '.' . $ext;
-    return move_uploaded_file($file['tmp_name'], "$folder/$name") ? "images/$dir/$name" : false;
+    return move_uploaded_file($file['tmp_name'], "$folder/$name") ? "$root/$dir/$name" : false;
 }
 
 function delete_image($path)
@@ -375,25 +378,35 @@ function delete_image($path)
     $path = (string)$path;
     // Shared placeholder images (images/*/placeholder.*) are used by many rows: never delete them.
     if (strpos(basename($path), 'placeholder.') === 0) return;
-    if ($path && strpos($path, 'images/') === 0 && strpos($path, '..') === false) {
+    if ($path && (strpos($path, 'images/') === 0 || strpos($path, 'uploads/') === 0) && strpos($path, '..') === false) {
         $f = __DIR__ . '/../' . $path;
         if (is_file($f)) unlink($f);
     }
 }
 
+const PARTNER_PLACEHOLDER = 'uploads/partners/placeholder.svg';   // shown when a partner has no portrait
+
+// Partner testimonials (partners with a quote), managed in Admin > Partners.
+// Before db/partners_testimonials.sql has run, falls back to the original three quotes.
 function testimonials()
 {
-    return [
-        ['name' => 'Kwame Mensah',  'role' => 'Head Chef',      'business' => 'Adom Kitchen',    'quote' => 'Our kontomire arrives the morning it was picked, with the farm named on the crate. Guests taste the difference.'],
-        ['name' => 'Efua Boateng',  'role' => 'Owner',          'business' => 'Sankofa Table',   'quote' => 'Weekly delivery slots let me plan the menu around what is in season, not what the market happens to have.'],
-        ['name' => 'Yaw Darko',     'role' => 'Executive Chef', 'business' => 'Volta Bay Lodge', 'quote' => 'Consistent quality for a full hotel kitchen was the hard part. Akuafo made it routine.'],
-    ];
+    try {
+        $rows = (new Database())->fetchAll("SELECT name, role, restaurant_name, quote, photo FROM aku_partners WHERE quote IS NOT NULL AND quote <> '' ORDER BY sort_order, id");
+        return array_map(fn($r) => ['name' => $r['name'], 'role' => (string)$r['role'], 'business' => (string)$r['restaurant_name'],
+                                    'quote' => $r['quote'], 'photo' => $r['photo'] ?: PARTNER_PLACEHOLDER], $rows);
+    } catch (PDOException $e) {
+        return [
+            ['name' => 'Kwame Mensah', 'role' => 'Head Chef',      'business' => 'Adom Kitchen',    'photo' => PARTNER_PLACEHOLDER, 'quote' => 'Our kontomire arrives the morning it was picked, with the farm named on the crate. Guests taste the difference.'],
+            ['name' => 'Efua Boateng', 'role' => 'Owner',          'business' => 'Sankofa Table',   'photo' => PARTNER_PLACEHOLDER, 'quote' => 'Weekly delivery slots let me plan the menu around what is in season, not what the market happens to have.'],
+            ['name' => 'Yaw Darko',    'role' => 'Executive Chef', 'business' => 'Volta Bay Lodge', 'photo' => PARTNER_PLACEHOLDER, 'quote' => 'Consistent quality for a full hotel kitchen was the hard part. Akuafo made it routine.'],
+        ];
+    }
 }
 
 function img($src, $w = 600, $h = 600)
 {
     $src = (string)$src;   // avoids the strpos(null) deprecation when an image is missing
     if (preg_match('#^https?://#', $src)) return $src;
-    if (strpos($src, 'images/') === 0) return url($src);
+    if (strpos($src, 'images/') === 0 || strpos($src, 'uploads/') === 0) return url($src);
     return "https://images.unsplash.com/$src?w=$w&h=$h&fit=crop&auto=format";
 }

@@ -14,6 +14,7 @@ class SetupClass extends Database
             ['file' => 'delivery_d2.sql',  'label' => 'Saved addresses and waitlist',    'check' => ['column', 'aku_orders', 'gps_address']],
             ['file' => 'inventory.sql',    'label' => 'Inventory (stock levels)',        'check' => ['table', 'aku_stock_moves']],
             ['file' => 'security.sql',     'label' => 'Security (login lockout)',        'check' => ['table', 'aku_login_attempts']],
+            ['file' => 'partners_testimonials.sql', 'label' => 'Partner testimonials (photo, role, quote)', 'check' => ['column', 'aku_partners', 'quote']],
         ];
     }
 

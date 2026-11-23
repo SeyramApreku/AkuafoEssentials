@@ -1,0 +1,11 @@
+# Uploaded pictures only (e.g. partner portraits). Never serve a script from here, even if one were uploaded disguised as an image.
+# (Only Require/Deny rules: Options and php_flag can break every image on servers that don't allow them.)
+<FilesMatch "\.(php\d?|phtml|phar|pl|py|cgi|sh|asp|aspx|jsp)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
