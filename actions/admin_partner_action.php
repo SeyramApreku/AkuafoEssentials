@@ -32,10 +32,10 @@ $data = [
     'sort_order'      => max(0, min(999, (int)($_POST['sort_order'] ?? 0))),
 ];
 
-// Portrait (uploads/partners/) and logo (images/partners/): JPG/PNG/WebP up to 2 MB, checked by save_image().
+// Portrait (uploads/partners/) and logo (images/partners/): checked by save_image() (big photos are shrunk in the browser first).
 $photo = save_image($_FILES['photo'] ?? [], 'partners', 'uploads');
 $logo  = save_image($_FILES['image'] ?? [], 'partners');
-if ($photo === false || $logo === false) { $_SESSION['admin_msg'] = 'Pictures must be JPG, PNG or WebP, up to 2 MB.'; redirect($back); }
+if ($photo === false || $logo === false) { $_SESSION['admin_msg'] = save_image_error(); redirect($back); }
 if ($photo) $data['photo'] = $photo;
 elseif (!empty($_POST['remove_photo'])) $data['photo'] = null;
 if ($logo) $data['image'] = $logo;

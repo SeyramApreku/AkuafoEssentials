@@ -61,9 +61,18 @@ include __DIR__ . '/layout/header.php';
         </label>
         <?php endforeach; ?>
       </div>
+      <h2 class="font-display text-xl font-light mb-4">For how long?</h2>
+      <div class="grid grid-cols-3 gap-2 mb-6">
+        <?php foreach (box_durations() as $w => $label): ?>
+        <label class="pill relative py-2.5 text-xs border text-center cursor-pointer" style="border-color:var(--border)">
+          <input type="radio" name="weeks" value="<?= $w ?>" <?= $w === 4 ? 'checked' : '' ?>><?= e($label) ?>
+        </label>
+        <?php endforeach; ?>
+      </div>
       <div class="border-t pt-4 mb-4 text-sm space-y-1.5" style="border-color:var(--border)">
         <div class="flex justify-between"><span style="color:var(--muted-foreground)">Items</span><span id="item-count">0</span></div>
-        <div class="flex justify-between font-medium"><span>Per delivery</span><span id="box-total" class="font-display">GH₵ 0</span></div>
+        <div class="flex justify-between"><span style="color:var(--muted-foreground)">Per delivery</span><span id="box-total" class="font-display">GH₵ 0</span></div>
+        <div class="flex justify-between font-medium"><span id="plan-label">4 deliveries, paid once</span><span id="plan-total" class="font-display">GH₵ 0</span></div>
       </div>
       <button id="box-submit" disabled class="w-full py-3 text-sm font-medium btn-primary disabled:opacity-40">Add custom box</button>
     </aside>
@@ -80,8 +89,15 @@ function recalc() {
   });
   document.getElementById('box-total').textContent = 'GH₵ ' + total;
   document.getElementById('item-count').textContent = count;
+  const f = document.querySelector('input[name=frequency]:checked'), w = document.querySelector('input[name=weeks]:checked');
+  const n = Math.max(1, Math.floor((w ? parseInt(w.value) : 4) / ({ weekly: 1, biweekly: 2, monthly: 4 }[f ? f.value : 'weekly'] || 1)));
+  const all = total * n;
+  const how = { weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Once a month' }[f ? f.value : 'weekly'];
+  document.getElementById('plan-label').textContent = how + ' for ' + (w ? w.value : 4) + ' weeks = ' + n + ' deliver' + (n === 1 ? 'y' : 'ies') + ', paid once';
+  document.getElementById('plan-total').textContent = 'GH₵ ' + (all % 1 === 0 ? all : all.toFixed(2));
   document.getElementById('box-submit').disabled = count === 0;
 }
+document.querySelectorAll('input[name=frequency], input[name=weeks]').forEach(i => i.addEventListener('change', recalc));
 rows.forEach(r => r.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
   const input = r.querySelector('[data-qty]');
   input.value = Math.max(0, parseInt(input.value) + parseInt(b.dataset.step));

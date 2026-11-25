@@ -35,12 +35,26 @@ checkTest('Quotes are escaped', e('"x" \'y\''), '&quot;x&quot; &#039;y&#039;');
 checkTest('null becomes empty text', e(null), '');
 
 section('Login lockout');
-checkTest('No failures: not locked', login_locked(0, 0), false);
-checkTest('4 failures for an email: not locked', login_locked(LOGIN_MAX_FAILS_EMAIL - 1, 0), false);
-checkTest('5 failures for an email: locked', login_locked(LOGIN_MAX_FAILS_EMAIL, 0), true);
-checkTest('19 failures from one IP: not locked', login_locked(0, LOGIN_MAX_FAILS_IP - 1), false);
-checkTest('20 failures from one IP: locked', login_locked(0, LOGIN_MAX_FAILS_IP), true);
-checkTest('Lock lasts 15 minutes', LOGIN_LOCK_MINUTES, 15);
+checkTest('3 tries allowed', LOGIN_MAX_FAILS, 3);
+checkTest('Lock lasts 10 minutes', LOGIN_LOCK_MINUTES, 10);
+checkTest('1st failure: 2 attempts left', login_fail_message(1), 'Incorrect email or password. You have 2 attempts left.');
+checkTest('2nd failure: 1 attempt left', login_fail_message(2), 'Incorrect email or password. You have 1 attempt left.');
+checkTest('3rd failure: locked message', login_fail_message(3), "You've been locked out for 10 minutes due to too many failed login attempts. Please try again after 10 minutes.");
+checkTest('Wait text rounds up (7 min)', login_wait_text(401), 'Try again in 7 minutes.');
+checkTest('Under a minute says 1 minute', login_wait_text(20), 'Try again in 1 minute.');
+
+section('Password rule (registration)');
+checkTest('Hyphen counts as a symbol (Stepby-step123)', password_problem('Stepby-step123'), '');
+checkTest('Underscore, dot, hash, space all count', [password_problem('Abc_defg1'), password_problem('Abc.defg1'), password_problem('Abc#defg1'), password_problem('Abc defg1')], ['', '', '', '']);
+checkTest('The old special characters still work', password_problem('Passw0rd!'), '');
+checkTest('Accented letters are allowed', password_problem('Ébène-2026x'), '');
+checkTest('Too short', password_problem('Ab1-'), 'Your password needs at least 8 characters.');
+checkTest('Too long (over 72)', password_problem(str_repeat('Ab1-', 19)), 'Your password can be at most 72 characters.');
+checkTest('Says exactly what is missing (symbol)', password_problem('Password123'), 'Your password needs a symbol (for example - _ ! @ #).');
+checkTest('Lists several missing parts', password_problem('password'), 'Your password needs an uppercase letter, a number and a symbol (for example - _ ! @ #).');
+checkTest('Confirmation matches', password_problem('Stepby-step123', 'Stepby-step123'), '');
+checkTest('Confirmation differs', password_problem('Stepby-step123', 'Stepby-step124'), 'The two passwords do not match.');
+checkTest('Empty confirmation is a mismatch', password_problem('Stepby-step123', ''), 'The two passwords do not match.');
 
 section('Order ownership');
 $_SESSION = ['customer_id' => 7];

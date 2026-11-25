@@ -13,7 +13,7 @@ $here = $_SERVER['REQUEST_URI'];
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($pageTitle ?? 'Akuafo & Essentials') ?></title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="<?= url('css/style.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/style.css') ?>">
   <script>
   // Security: add this session's CSRF token to every POST form (checked in core/core.php).
   document.addEventListener('DOMContentLoaded', function () {
@@ -56,6 +56,8 @@ $here = $_SERVER['REQUEST_URI'];
             <p class="px-4 pt-1 pb-2 text-xs border-b mb-1" style="color:var(--muted-foreground);border-color:var(--border)">Hi, <strong style="color:var(--foreground)"><?= e($first) ?></strong><?= $mt ? ' · ' . e(ucfirst($mt)) . ' member' : '' ?></p>
             <?php if (is_admin()): ?><button type="button" onclick="toggleAdminNav()" class="account-item w-full text-left" role="menuitem">Admin menu</button><?php endif; ?>
             <a href="<?= url('views/orders.php') ?>" class="account-item" role="menuitem">My orders</a>
+            <a href="<?= url('views/subscriptions.php') ?>" class="account-item" role="menuitem">My subscriptions</a>
+            <?php if (!empty($mt)): ?><a href="<?= url('views/member_recipes.php') ?>" class="account-item" role="menuitem">My recipes</a><?php endif; ?>
             <a href="<?= url('views/addresses.php') ?>" class="account-item" role="menuitem">My addresses</a>
             <a href="<?= url('views/membership.php') ?>" class="account-item" role="menuitem"><?= $mt ? 'My membership' : 'Membership' ?></a>
             <form method="post" action="<?= url('actions/logout_action.php') ?>" class="border-t mt-1 pt-1" style="border-color:var(--border)"><?= csrf_field() ?><button class="account-item w-full text-left" style="color:var(--accent)" role="menuitem">Log out</button></form>
@@ -94,6 +96,31 @@ $here = $_SERVER['REQUEST_URI'];
     <?php foreach (nav_items() as $path => $label): ?><a href="<?= url($path) ?>" class="block py-2 text-sm font-medium"><?= $label ?></a><?php endforeach; ?>
   </div>
 </header>
+<?php
+// Breadcrumbs + "Back to …" on every inner customer page (not the home page).
+$crumbPage = ltrim(substr(str_replace(chr(92), '/', $_SERVER['SCRIPT_FILENAME'] ?? ''), strlen(str_replace(chr(92), '/', dirname(__DIR__, 2)))), '/');
+$crumbs = function_exists('breadcrumbs') ? breadcrumbs($crumbPage, $pageTitle ?? '', isset($_GET['id']) && in_array($crumbPage, ['views/farms.php', 'views/recipes.php'], true)) : [];
+if (count($crumbs) > 1):
+  $backTo = $crumbs[count($crumbs) - 2]; ?>
+<nav aria-label="Breadcrumb" class="max-w-7xl mx-auto px-6 pt-6 -mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs">
+  <ol class="flex flex-wrap items-center gap-1.5" style="color:var(--muted-foreground)">
+    <?php foreach ($crumbs as $i => [$label, $href]): ?>
+      <?php if ($i > 0): ?><li aria-hidden="true">›</li><?php endif; ?>
+      <li><?php if ($href): ?><a href="<?= e($href) ?>" class="hover:underline"><?= e($label) ?></a><?php else: ?><span aria-current="page" style="color:var(--foreground)"><?= e($label) ?></span><?php endif; ?></li>
+    <?php endforeach; ?>
+  </ol>
+  <a href="<?= e($backTo[1]) ?>" data-back class="font-medium hover:underline" style="color:var(--primary)">← Back to <?= e($backTo[0]) ?></a>
+</nav>
+<script>
+// "Back" returns to exactly where they were (filters, search, scroll) when they came from that page.
+document.querySelector('[data-back]').addEventListener('click', function (e) {
+  try {
+    var from = new URL(document.referrer), to = new URL(this.href);
+    if (from.origin === location.origin && from.pathname === to.pathname && history.length > 1) { e.preventDefault(); history.back(); }
+  } catch (err) {}
+});
+</script>
+<?php endif; ?>
 <!-- Site-wide confirmation dialog (replaces the browser's "this site says" box).
      Use: <form data-confirm="Delete this address?" data-confirm-yes="Delete">. Old onsubmit="return confirm('…')" forms are upgraded automatically. -->
 <div id="aku-confirm" role="dialog" aria-modal="true" aria-labelledby="aku-confirm-text" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(26,25,22,.55);align-items:center;justify-content:center;padding:16px">

@@ -65,7 +65,7 @@ $data = [
 ];
 
 $img = save_image($_FILES['image'] ?? [], 'entertaining');
-if ($img === false) { $_SESSION['admin_msg'] = 'Image must be JPG, PNG or WebP, up to 2 MB.'; redirect($back); }
+if ($img === false) { $_SESSION['admin_msg'] = save_image_error(); redirect($back); }
 if ($img !== null) $data['image'] = $img;
 elseif (!$old)     $data['image'] = 'images/entertaining/placeholder.svg';
 

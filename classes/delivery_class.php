@@ -122,6 +122,22 @@ class DeliveryClass extends Database
     }
     public function waitlist() { return $this->fetchAll('SELECT * FROM aku_delivery_waitlist ORDER BY area_name, created_at'); }
     public function deleteWaitlist($id) { return $this->execute('DELETE FROM aku_delivery_waitlist WHERE id = ?', [(int)$id]); }
+    public function waitlistEntry($id) { return $this->fetchOne('SELECT * FROM aku_delivery_waitlist WHERE id = ?', [(int)$id]); }
+
+    // "Add" on the waitlist: the area joins the zone (or is switched on there if it already exists),
+    // and everyone waiting for it is taken off the list. Returns [area name, [people to email]].
+    public function acceptWaitlist($id, $zoneId, $name = null)
+    {
+        $w = $this->waitlistEntry($id);
+        if (!$w || !$this->zone($zoneId)) return [null, []];
+        $name = trim((string)($name ?: $w['area_name']));
+        $existing = $this->fetchOne('SELECT * FROM aku_delivery_areas WHERE LOWER(TRIM(name)) = LOWER(?)', [$name]);
+        if ($existing) $this->saveArea($existing['id'], $zoneId, $existing['name'], 1);
+        else $this->saveArea(0, $zoneId, $name, 1);
+        $people = $this->fetchAll('SELECT * FROM aku_delivery_waitlist WHERE LOWER(TRIM(area_name)) = LOWER(TRIM(?))', [$w['area_name']]);
+        $this->execute('DELETE FROM aku_delivery_waitlist WHERE LOWER(TRIM(area_name)) = LOWER(TRIM(?))', [$w['area_name']]);
+        return [$name, $people];
+    }
 
     public function setSetting($name, $value)
     {

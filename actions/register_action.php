@@ -1,4 +1,5 @@
 <?php
+ob_start();   // lets finish_response() send the reply before the (slow) welcome email goes out
 require_once __DIR__ . '/../controllers/customer_controller.php';
 header('Content-Type: application/json');
 
@@ -15,28 +16,20 @@ if ($name === '' || $email === '' || $pass === '' || $country === '' || $city ==
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     echo json_encode(['success' => false, 'message' => 'Enter a valid email address.']); exit;
 }
-if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $pass)) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Password must be 8+ characters with uppercase, lowercase, a number and a special character.'
-    ]);
-    exit;
+// Any symbol is allowed; the two password boxes must match (rule lives in core/core.php).
+if ($problem = password_problem($pass, $_POST['customer_pass_confirm'] ?? '')) {
+    echo json_encode(['success' => false, 'message' => $problem]); exit;
 }
 
 $result = (new CustomerController())->register($name, $email, password_hash($pass, PASSWORD_DEFAULT), $country, $city, $contact, 2);
 
 if ($result['success']) {
-
+    // Reply straight away; sending through Gmail can take several seconds, so it happens afterwards.
+    echo json_encode(['success' => true, 'message' => 'Registration successful. A welcome email is on its way to ' . $email . '.']);
+    finish_response();
     require_once __DIR__ . '/../core/mailer.php';
-    $sent = sendWelcomeEmail($email, $name);   // never throws; failures go to the error log
-
-    echo json_encode([
-        'success' => true,
-        'message' => $sent
-            ? 'Registration successful. We sent a welcome email to ' . $email . '.'
-            : 'Registration successful.'
-    ]);
-
+    sendWelcomeEmail($email, $name);   // never throws; failures go to the error log
+    exit;
 } else {
     echo json_encode([
         'success' => false,

@@ -51,14 +51,14 @@ $act = url('actions/admin_partner_action.php');
       <span class="<?= $lbl ?>" style="color:var(--muted-foreground)">Portrait photo (Testimonials page)</span>
       <img src="<?= e(img($f['photo'] ?: PARTNER_PLACEHOLDER, 160, 160)) ?>" alt="" class="w-20 h-20 object-cover mb-2" style="filter:grayscale(1)">
       <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="text-sm">
-      <p class="text-xs mt-1" style="color:var(--muted-foreground)">Square works best. JPG, PNG or WebP, up to 2 MB. Saved in uploads/partners/.</p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)">Square works best. JPG, PNG or WebP. Big photos are resized automatically. Saved in uploads/partners/.</p>
       <?php if (!empty($f['photo'])): ?><label class="flex items-center gap-2 text-xs mt-2"><input type="checkbox" name="remove_photo" value="1"> Remove photo (use the placeholder)</label><?php endif; ?>
     </div>
     <div>
       <span class="<?= $lbl ?>" style="color:var(--muted-foreground)">Logo (home page, optional)</span>
       <?php if (!empty($f['image'])): ?><img src="<?= e(img($f['image'], 160, 160)) ?>" alt="" class="w-20 h-20 object-contain p-1 mb-2" style="background:#fff"><?php endif; ?>
       <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="text-sm">
-      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP, up to 2 MB.</p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP. Big photos are resized automatically.</p>
     </div>
     <div><label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Display order</label>
       <input type="number" name="sort_order" min="0" max="999" value="<?= (int)$f['sort_order'] ?>" class="<?= $box ?>" style="border-color:var(--border)">

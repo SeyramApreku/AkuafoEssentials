@@ -17,25 +17,29 @@ $back = url('views/membership_checkout.php?tier=' . $key);
 require_login('views/membership_checkout.php?tier=' . $key);
 
 $memberships = new MembershipClass();
+$price = $tier['price'];
 if ($active = $memberships->activeFor(customer_id())) {
-    $_SESSION['membership_errors'] = ['You already have an active ' . ucfirst($active['tier']) . ' membership until '
-        . date('j M Y', strtotime($active['expires_at'])) . '. You can choose a new plan after it ends.'];
-    redirect($back);
+    $price = membership_upgrade_price($active['tier'], $key);   // upgrade: pay only the difference
+    if ($price === null) {
+        $_SESSION['membership_errors'] = ['You already have an active ' . ucfirst($active['tier']) . ' membership until '
+            . date('j M Y', strtotime($active['expires_at'])) . '. You can move up to a higher plan at any time, or choose another plan after it ends.'];
+        redirect($back);
+    }
 }
 
 $customer = (new Database())->fetchOne('SELECT customer_email FROM aku_customer WHERE customer_id = ?', [customer_id()]);
 if (!$customer) redirect(url('actions/logout_action.php'));
 
 $reference = 'MEM' . strtoupper(bin2hex(random_bytes(5)));   // 13 chars, fits order_ref
-$memberships->createPending(customer_id(), $key, $tier['price'], $reference);
+$memberships->createPending(customer_id(), $key, $price, $reference);
 
 $res = paystack_request('POST', '/transaction/initialize', [
     'email'        => $customer['customer_email'],
-    'amount'       => (int)round($tier['price'] * 100),   // pesewas
+    'amount'       => (int)round($price * 100),   // pesewas
     'currency'     => 'GHS',
     'reference'    => $reference,
     'callback_url' => site_url('actions/membership_callback.php'),
-    'metadata'     => ['type' => 'membership', 'tier' => $key, 'customer_id' => customer_id()],
+    'metadata'     => ['type' => $active ? 'membership_upgrade' : 'membership', 'tier' => $key, 'customer_id' => customer_id()],
 ]);
 
 if (empty($res['status']) || empty($res['data']['authorization_url'])) {

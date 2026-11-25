@@ -27,6 +27,11 @@ $p     = $rep->summary($prevFrom->format('Y-m-d'), $prevTo->format('Y-m-d'));
 $daily = $rep->daily($F, $T);
 $types = $rep->byItemType($F, $T);
 $top   = $rep->topItems($F, $T);
+// Farmers' produce: split automatically by each farmer's plan when the customer paid (see Farmer Payouts)
+$fs  = farmer_split_totals($rep, $F, $T);
+$fsP = farmer_split_totals($rep, $prevFrom->format('Y-m-d'), $prevTo->format('Y-m-d'));
+$income  = $s['revenue'] + $s['membership_amount'];
+$incomeP = $p['revenue'] + $p['membership_amount'];
 $typeNames = ['produce' => 'Produce', 'box' => 'Weekly boxes', 'preorder' => 'Hampers & bulk (old)', 'entertaining' => 'Entertaining', 'membership' => 'Memberships (in cart)'];
 
 // "+12% vs previous 30 days" (null when there's nothing to compare with)
@@ -70,7 +75,18 @@ $bw = $plotW / count($daily); $gap = $bw > 6 ? 2 : 0;
     <?= $tile('Delivery fees collected', money($s['delivery']), 'included in order revenue', $change($s['delivery'], $p['delivery'])) ?>
     <?= $tile('Membership sales', money($s['membership_amount']), (int)$s['memberships'] . ' memberships started', $change($s['membership_amount'], $p['membership_amount'])) ?>
     <?= $tile('Refunded / cancelled', money($s['refund_amount']), (int)$s['refunds'] . ' paid orders cancelled') ?>
-    <?= $tile('Total income', money($s['revenue'] + $s['membership_amount']), 'orders + memberships', $change($s['revenue'] + $s['membership_amount'], $p['revenue'] + $p['membership_amount'])) ?>
+    <?= $tile('Total income', money($income), 'everything customers paid: orders + memberships', $change($income, $incomeP)) ?>
+  </div>
+
+  <!-- Farmers' share vs what Akuafo keeps -->
+  <h2 class="font-display text-2xl mb-1">After paying farmers</h2>
+  <p class="text-sm mb-4" style="color:var(--muted-foreground)">Farm Shop produce belongs to the farmer: the moment a customer pays, it's split by the farmer's plan. <a class="underline" href="<?= url('views/admin/admin_farmer_payouts.php') ?>">Farmer Payouts →</a></p>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+    <?= $tile("Farmers' share", money($fs['to_farmers']), 'of ' . money($fs['gross']) . " farmers' produce sold" . ($fs['plan_fees'] > 0 ? ', after ' . money($fs['plan_fees']) . ' plan fees' : ''), $change($fs['to_farmers'], $fsP['to_farmers'])) ?>
+    <?= $tile('Akuafo keeps from farmers', money($fs['commission'] + $fs['plan_fees']), 'commission' . ($fs['plan_fees'] > 0 ? ' + plan fees' : ''), $change($fs['commission'] + $fs['plan_fees'], $fsP['commission'] + $fsP['plan_fees'])) ?>
+    <div class="p-5 border" style="border-color:var(--primary);background:var(--card)"><p class="text-xs uppercase tracking-widest mb-1" style="color:var(--primary)">Our revenue</p>
+      <p class="font-display text-3xl"><?= money(round($income - $fs['to_farmers'], 2)) ?></p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)"><?= money($income) ?> total income − <?= money($fs['to_farmers']) ?> to farmers<?php $d = $change($income - $fs['to_farmers'], $incomeP - $fsP['to_farmers']); if ($d !== null): ?> · <span style="color:<?= $d >= 0 ? 'var(--primary)' : '#b3261e' ?>"><?= $d >= 0 ? '▲' : '▼' ?> <?= abs($d) ?>%</span><?php endif; ?></p></div>
   </div>
 
   <!-- Daily revenue: single series, so no legend; the title names it -->

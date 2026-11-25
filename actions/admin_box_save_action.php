@@ -29,7 +29,7 @@ if (isset($_POST['contents'])) {
 
 $img = save_image($_FILES['image'] ?? [], 'boxes');
 if ($img === false) {
-    $_SESSION['admin_msg'] = 'Image must be JPG, PNG or WebP, up to 2 MB.';
+    $_SESSION['admin_msg'] = save_image_error(); $_SESSION['admin_restore'] = 1;
     redirect($old ? $back . '?edit=' . urlencode($id) : $back . '?new=1');
 }
 if ($img !== null) {

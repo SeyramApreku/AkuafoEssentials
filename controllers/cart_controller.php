@@ -19,7 +19,7 @@ function cart_stock_problems()
 }
 
 // Build a cart item from a posted type + key, reading price/name from the DB (never trust posted prices).
-function build_cart_item($type, $key, $qty, $sizeIdx = 0, $freq = '', $day = '', $window = '')
+function build_cart_item($type, $key, $qty, $sizeIdx = 0, $freq = '', $day = '', $window = '', $weeks = 4)
 {
     require_once __DIR__ . '/catalog_controller.php';
     $qty = max(1, (int)$qty);
@@ -37,14 +37,16 @@ function build_cart_item($type, $key, $qty, $sizeIdx = 0, $freq = '', $day = '',
         if ($type === 'box') {
         foreach (catalog()->boxes() as $b) if ($b['id'] === $key && isset($b['sizes'][(int)$sizeIdx])) {
             $s = $b['sizes'][(int)$sizeIdx];
-            $id = "box-{$b['id']}-$sizeIdx";
-            $when = 'Weekly';
+            $weeks = isset(box_durations()[(int)$weeks]) ? (int)$weeks : 4;
+            $when = 'Every week';
             if ($freq !== '' || $day !== '' || $window !== '') {
                 if (!isset(frequencies()[$freq]) || !in_array($day, delivery_days()) || !in_array($window, time_windows())) return null;
                 $when = frequencies()[$freq] . ', ' . $day . 's, ' . $window;
-                $id .= '-' . substr(md5($when), 0, 8);
-            }
-            return ['id' => $id, 'name' => "{$b['name']} ({$s['label']})", 'price' => (float)$s['price'], 'qty' => 1, 'type' => 'box', 'image' => img($b['image'], 200, 200), 'detail' => $when . ' · ' . $s['description']];
+            } else $freq = 'weekly';
+            $id = "box-{$b['id']}-$sizeIdx-w$weeks-$freq-" . substr(md5($when), 0, 8);
+            // Paid upfront: the price of one box times the number of deliveries in the plan.
+            return ['id' => $id, 'name' => "{$b['name']} ({$s['label']})", 'price' => (float)$s['price'] * box_delivery_count($freq, $weeks), 'qty' => 1, 'type' => 'box',
+                    'image' => img($b['image'], 200, 200), 'detail' => $when . ' · ' . box_plan_label($freq, $weeks) . ' · ' . $s['description']];
         }
     }
     
@@ -66,7 +68,7 @@ function build_cart_item($type, $key, $qty, $sizeIdx = 0, $freq = '', $day = '',
     return null;
 }
 
-function build_custom_box($qtys, $freq, $day, $window)
+function build_custom_box($qtys, $freq, $day, $window, $weeks = 4)
 {
     require_once __DIR__ . '/catalog_controller.php';
     if (!isset(frequencies()[$freq]) || !in_array($day, delivery_days()) || !in_array($window, time_windows())) return null;
@@ -80,9 +82,10 @@ function build_custom_box($qtys, $freq, $day, $window)
         $total += $p['price'] * $q;
     }
     if (!$lines) return null;
+    $weeks = isset(box_durations()[(int)$weeks]) ? (int)$weeks : 4;
     $schedule = frequencies()[$freq] . ', ' . $day . 's, ' . $window;
-    return ['id' => 'custom-' . substr(md5($schedule . implode('|', $lines)), 0, 10), 'name' => 'Custom Box',
-            'price' => (float)$total, 'qty' => 1, 'type' => 'box',
+    return ['id' => "custom-w$weeks-$freq-" . substr(md5($schedule . implode('|', $lines)), 0, 10), 'name' => 'Custom Box',
+            'price' => (float)$total * box_delivery_count($freq, $weeks), 'qty' => 1, 'type' => 'box',
             'image' => img('photo-1627989147125-a004d05946d3', 200, 200),
-            'detail' => $schedule . ' · ' . implode(', ', $lines)];
+            'detail' => $schedule . ' · ' . box_plan_label($freq, $weeks) . ' · ' . implode(', ', $lines)];
 }

@@ -30,7 +30,7 @@ include __DIR__ . '/layout/header.php';
   </div>
 <?php else: ?>
   <a href="<?= url('views/membership.php') ?>" class="text-xs mb-8 inline-block" style="color:var(--muted-foreground)">← All memberships</a>
-  <h1 class="font-display text-3xl font-light mb-8">Join <?= e($tier['name']) ?></h1>
+  <h1 class="font-display text-3xl font-light mb-8"><?= $active && membership_upgrade_price($active['tier'], $tier['name']) !== null ? 'Upgrade to' : 'Join' ?> <?= e($tier['name']) ?></h1>
   <?php foreach ($errors as $err): ?><p class="text-sm mb-3 p-3" style="background:var(--muted);color:var(--accent)"><?= e($err) ?></p><?php endforeach; ?>
 
   <div class="mb-8 p-4 border text-sm space-y-1.5" style="border-color:var(--border)">
@@ -39,10 +39,22 @@ include __DIR__ . '/layout/header.php';
     <p class="text-xs" style="color:var(--muted-foreground)">Lasts one month from payment.</p>
   </div>
 
-  <?php if ($active): ?>
+  <?php $upPrice = $active ? membership_upgrade_price($active['tier'], $tier['name']) : null;
+  if ($active && $upPrice !== null): $was = tier_info($active['tier']); ?>
+    <div class="mb-6 p-4 border text-sm space-y-1.5" style="border-color:var(--primary);background:var(--card)">
+      <p class="font-medium">Upgrade from <?= e($was['name']) ?> to <?= e($tier['name']) ?></p>
+      <div class="flex justify-between gap-4"><span><?= e($tier['name']) ?> <?= money($tier['price']) ?> − <?= e($was['name']) ?> <?= money($was['price']) ?> already paid</span><span class="font-display"><?= money($upPrice) ?></span></div>
+      <p class="text-xs" style="color:var(--muted-foreground)">Starts as soon as you pay and still ends on <?= e(date('j M Y', strtotime($active['expires_at']))) ?>. Your voucher goes up by <?= money($tier['voucher'] - $was['voucher']) ?> (what you have already spent stays spent) and you get a new voucher code.</p>
+    </div>
+    <form method="post" action="<?= url('actions/membership_action.php') ?>">
+      <input type="hidden" name="tier" value="<?= e(strtolower($tier['name'])) ?>">
+      <button class="w-full py-3 text-sm font-medium btn-primary">Pay <?= money($upPrice) ?> and upgrade &rarr;</button>
+      <p class="text-xs mt-3 text-center" style="color:var(--muted-foreground)">You will be taken to Paystack to pay securely by card or mobile money.</p>
+    </form>
+  <?php elseif ($active): ?>
     <div class="p-4 border text-sm" style="border-color:var(--secondary);background:var(--muted)">
       <p class="font-medium mb-1"><?= tier_star($active['tier']) ?> You're a <?= e(ucfirst($active['tier'])) ?> member until <?= e(date('j M Y', strtotime($active['expires_at']))) ?></p>
-      <p class="text-xs" style="color:var(--muted-foreground)">You can choose a new plan after your current membership ends.</p>
+      <p class="text-xs" style="color:var(--muted-foreground)">You can choose a lower plan after your current membership ends.</p>
     </div>
   <?php else: ?>
   <form method="post" action="<?= url('actions/membership_action.php') ?>">

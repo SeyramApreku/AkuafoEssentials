@@ -29,8 +29,25 @@ function cart_add_checked($item)
 
 switch ($act) {
     case 'add':
-        $item = build_cart_item($_POST['type'] ?? '', $_POST['key'] ?? '', $_POST['qty'] ?? 1, $_POST['size'] ?? 0, $_POST['frequency'] ?? '', $_POST['day'] ?? '', $_POST['window'] ?? '');
+        $item = build_cart_item($_POST['type'] ?? '', $_POST['key'] ?? '', $_POST['qty'] ?? 1, $_POST['size'] ?? 0, $_POST['frequency'] ?? '', $_POST['day'] ?? '', $_POST['window'] ?? '', $_POST['weeks'] ?? 4);
         if ($item) cart_add_checked($item);
+        break;
+    case 'renew':   // "Renew" on My subscriptions or the reminder email: the same box, schedule and length again
+        require_once __DIR__ . '/../classes/subscription_class.php';
+        $sub = !empty($_SESSION['customer_id']) ? (new SubscriptionClass())->one((int)($_POST['sub'] ?? 0), (int)$_SESSION['customer_id']) : null;
+        if ($sub) {
+            [$freq, $weeks] = box_plan_from_key($sub['item_key']);
+            $price = (float)$sub['price_paid'];
+            $image = img('photo-1627989147125-a004d05946d3', 200, 200);
+            if (preg_match('/^box-(.+)-(\d+)-w\d+-/', $sub['item_key'], $m)) {   // ready-made box: today's price for that size
+                require_once __DIR__ . '/../controllers/catalog_controller.php';
+                foreach (catalog()->boxes() as $b) if ($b['id'] === $m[1] && isset($b['sizes'][(int)$m[2]])) {
+                    $price = (float)$b['sizes'][(int)$m[2]]['price'] * box_delivery_count($freq, $weeks);
+                    $image = img($b['image'], 200, 200);
+                }
+            }
+            cart_add_checked(['id' => $sub['item_key'], 'name' => $sub['name'], 'price' => $price, 'qty' => 1, 'type' => 'box', 'image' => $image, 'detail' => $sub['detail']]);
+        }
         break;
     case 'ent_many':   // "Add all to cart" from the guest calculator: qty[itemId] => quantity
         foreach ((array)($_POST['qty'] ?? []) as $key => $q) {
@@ -49,7 +66,7 @@ switch ($act) {
     case 'clear': cart()->clear(); unset($_SESSION['cart_order_ref']); $_SESSION['cart_open'] = true; break;
     case 'pass': cart()->setPass(true); break;
     case 'custom':
-        $item = build_custom_box($_POST['qty'] ?? [], $_POST['frequency'] ?? 'weekly', $_POST['day'] ?? '', $_POST['window'] ?? '');
+        $item = build_custom_box($_POST['qty'] ?? [], $_POST['frequency'] ?? 'weekly', $_POST['day'] ?? '', $_POST['window'] ?? '', $_POST['weeks'] ?? 4);
         if ($item) cart_add_checked($item);
         break;
 }

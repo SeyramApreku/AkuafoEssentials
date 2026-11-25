@@ -16,28 +16,41 @@ class CustomerClass extends Database
         ) > 0;
     }
 
-    /* ---------- Login lockout (table from db/security.sql; quietly off until it exists) ---------- */
+    /* ---------- Login lockout (table from db/login_lockout.sql; quietly off until it exists) ---------- */
+    // One row per email + IP. Times use the database clock (NOW()), so PHP and MySQL time zones never clash.
 
-    // Failed logins in the lock window: [for this email, from this IP].
-    public function recentFailures($email, $ip, $minutes)
+    // Seconds left on a lock for this email + IP (0 = not locked). An expired lock is cleared, so counting starts again.
+    public function lockSecondsLeft($email, $ip)
     {
         try {
-            $e = $this->fetchOne('SELECT COUNT(*) AS n FROM aku_login_attempts WHERE email = ? AND created_at > NOW() - INTERVAL ? MINUTE', [strtolower($email), (int)$minutes]);
-            $i = $this->fetchOne('SELECT COUNT(*) AS n FROM aku_login_attempts WHERE ip = ? AND created_at > NOW() - INTERVAL ? MINUTE', [$ip, (int)$minutes]);
-            return [(int)$e['n'], (int)$i['n']];
-        } catch (PDOException $ex) { return [0, 0]; }
+            $r = $this->fetchOne('SELECT TIMESTAMPDIFF(SECOND, NOW(), locked_until) AS secs FROM aku_login_attempts WHERE email = ? AND ip_address = ? AND locked_until IS NOT NULL',
+                                 [$this->lockEmail($email), $ip]);
+            if (!$r) return 0;
+            if ((int)$r['secs'] > 0) return (int)$r['secs'];
+            $this->clearFailures($email, $ip);   // lock is over
+            return 0;
+        } catch (PDOException $ex) { return 0; }
     }
 
+    // Counts one more failure (unknown emails too) and locks on the 3rd. Returns the new count (0 if the table is missing).
     public function recordFailure($email, $ip)
     {
         try {
-            $this->execute('INSERT INTO aku_login_attempts (email, ip) VALUES (?, ?)', [mb_substr(strtolower($email), 0, 150), $ip]);
-            $this->execute('DELETE FROM aku_login_attempts WHERE created_at < NOW() - INTERVAL 1 DAY');   // keep the table small
-        } catch (PDOException $ex) { /* table not created yet */ }
+            $this->execute('INSERT INTO aku_login_attempts (email, ip_address, attempt_count, last_attempt_at, locked_until)
+                            VALUES (?, ?, 1, NOW(), IF(1 >= ?, NOW() + INTERVAL ? MINUTE, NULL))
+                            ON DUPLICATE KEY UPDATE locked_until = IF(attempt_count + 1 >= ?, NOW() + INTERVAL ? MINUTE, NULL),
+                              attempt_count = attempt_count + 1, last_attempt_at = NOW()',
+                           [$this->lockEmail($email), $ip, LOGIN_MAX_FAILS, LOGIN_LOCK_MINUTES, LOGIN_MAX_FAILS, LOGIN_LOCK_MINUTES]);
+            $r = $this->fetchOne('SELECT attempt_count FROM aku_login_attempts WHERE email = ? AND ip_address = ?', [$this->lockEmail($email), $ip]);
+            return $r ? (int)$r['attempt_count'] : 0;
+        } catch (PDOException $ex) { return 0; }
     }
 
-    public function clearFailures($email)
+    // After a successful login (or when a lock runs out): start counting from zero.
+    public function clearFailures($email, $ip)
     {
-        try { $this->execute('DELETE FROM aku_login_attempts WHERE email = ?', [strtolower($email)]); } catch (PDOException $ex) {}
+        try { $this->execute('DELETE FROM aku_login_attempts WHERE email = ? AND ip_address = ?', [$this->lockEmail($email), $ip]); } catch (PDOException $ex) {}
     }
+
+    private function lockEmail($email) { return mb_substr(mb_strtolower(trim((string)$email)), 0, 150); }
 }

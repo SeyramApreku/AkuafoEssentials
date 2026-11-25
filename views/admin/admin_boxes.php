@@ -84,7 +84,7 @@ $lbl = 'text-xs uppercase tracking-widest mb-2 block';
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Image</label>
       <?php if (!empty($edit['image'])): ?><img src="<?= img($edit['image'], 160, 160) ?>" alt="" class="w-20 h-20 object-cover mb-2"><?php endif; ?>
       <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="text-sm">
-      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP, up to 2 MB. Leave empty to keep the current image.</p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP. Big photos are resized automatically. Leave empty to keep the current image.</p>
     </div>
     <div class="md:col-span-2">
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Note</label>
@@ -116,7 +116,7 @@ $lbl = 'text-xs uppercase tracking-widest mb-2 block';
     <div class="md:col-span-2">
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Image</label>
       <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="text-sm">
-      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP, up to 2 MB.</p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP. Big photos are resized automatically.</p>
     </div>
     <div class="md:col-span-2">
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Note</label>

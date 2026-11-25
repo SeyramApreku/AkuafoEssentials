@@ -21,6 +21,16 @@
     <p class="text-xs" style="color:var(--muted-foreground)">Made with care. Grown with love.</p>
   </div>
 </footer>
-<script src="<?= url('js/app.js') ?>"></script>
+<script src="<?= asset('js/app.js') ?>"></script>
 </body>
 </html>
+<?php
+// Box renewal reminders: no server timer needed. After a customer page has been sent, look for boxes
+// ending within BOX_REMIND_DAYS days and email those customers (each box only once).
+// Checked at most every 10 minutes per visitor, so pages stay fast.
+if (empty($_SESSION['box_remind_checked']) || $_SESSION['box_remind_checked'] < time() - 600) {
+    $_SESSION['box_remind_checked'] = time();
+    require_once __DIR__ . '/../../core/box_reminders.php';
+    send_box_reminders();
+}
+?>

@@ -138,15 +138,19 @@ include __DIR__ . '/views/layout/header.php';
         </div>
         <a href="<?= url('views/testimonials.php') ?>" class="inline-block px-6 py-3 text-sm font-medium btn-primary whitespace-nowrap self-start md:self-auto">Read Their Testimonials</a>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-px" style="background:var(--border)">
-        <?php foreach (partners() as $p): ?>
-<div class="p-5" style="background:var(--background)">
-  <?php if (!empty($p['image'])): ?><img src="<?= img($p['image']) ?>" alt="<?= e($p['name']) ?>" class="h-12 object-contain mb-3"><?php endif; ?>
-  <p class="font-display text-lg font-light leading-snug mb-1"><?= e(($p['restaurant_name'] ?? '') ?: $p['name']) ?></p>
-  <p class="text-xs uppercase tracking-widest" style="color:var(--accent)"><?= e($p['type']) ?></p>
-</div>
-<?php endforeach; ?>
+      <!-- Our clients: the top 4 partner logos (by display order in Admin > Partners) -->
+      <div class="grid grid-cols-2 md:grid-cols-4" style="background:var(--background)">
+        <?php foreach (top_partners(4) as $k => $p): $biz = trim((string)($p['restaurant_name'] ?? '')) ?: $p['name']; ?>
+          <div class="client-logo flex flex-col items-center justify-center gap-3 px-6 py-10 border-b <?= $k % 2 === 0 ? 'border-r' : '' ?> <?= $k % 4 !== 3 ? 'md:border-r' : 'md:border-r-0' ?>" style="border-color:var(--border)" title="<?= e($biz) ?>">
+            <img src="<?= img($p['image'], 320, 160) ?>" alt="<?= e($biz) ?>" class="h-16 md:h-20 w-auto max-w-[180px] object-contain" loading="lazy">
+            <p class="text-xs uppercase tracking-[0.2em]" style="color:var(--muted-foreground)"><?= e($biz) ?></p>
+          </div>
+        <?php endforeach; ?>
       </div>
+      <style>
+        .client-logo img { filter: grayscale(1) contrast(1.1); opacity: .8; transition: filter .25s ease, opacity .25s ease; mix-blend-mode: multiply; }
+        .client-logo:hover img { filter: none; opacity: 1; }
+      </style>
     </div>
   </section>
 
