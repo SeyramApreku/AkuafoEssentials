@@ -19,6 +19,7 @@ class OrderClass extends Database
                     [$orderId, $i['id'], $i['name'], $i['type'], $i['price'], $i['qty'], $i['detail'] ?? null]);
             }
             $this->commit();
+            $this->stampFarmers($orderId);
             return $ref;
         } catch (Throwable $ex) {
             $this->rollback();
@@ -56,8 +57,11 @@ class OrderClass extends Database
     public function markPaid($id)
     {
         $this->markPaidOnly($id);
+        $this->stampFarmers($id);   // payment in: each Farm Shop item now knows its farmer and commission (farmer's share vs ours)
         require_once __DIR__ . '/inventory_class.php';
         (new InventoryClass())->deductForOrder($id);   // stock comes off once the money is in
+        require_once __DIR__ . '/subscription_class.php';
+        (new SubscriptionClass())->createFromOrder($id);   // boxes in the order become subscriptions
     }
     private function markPaidOnly($id) { $this->execute("UPDATE aku_orders SET payment_status = 'paid', status = IF(status = 'pending', IF(order_type = 'entertaining', 'received', 'paid'), status) WHERE id = ?", [$id]); }
     // Entertaining orders: customer changes and cancellations.
@@ -69,7 +73,25 @@ class OrderClass extends Database
     {
         return $this->execute("UPDATE aku_orders SET status = 'cancelled', cancelled_at = NOW(), refund_status = ? WHERE id = ? AND status <> 'cancelled'", [$refundStatus, $id]);
     }
-    public function setStatus($id, $status) { return $this->execute('UPDATE aku_orders SET status = ? WHERE id = ?', [$status, $id]); }
+    public function setStatus($id, $status)
+    {
+        $n = $this->execute('UPDATE aku_orders SET status = ? WHERE id = ?', [$status, $id]);
+        if ($status === 'delivered') {   // farmer payouts count an order in the week it was delivered
+            try { $this->execute('UPDATE aku_orders SET delivered_at = NOW() WHERE id = ? AND delivered_at IS NULL', [$id]); } catch (Throwable $e) { error_log($e->getMessage()); }
+        }
+        return $n;
+    }
+    // Farm Shop lines: save which farmer grew it and their commission rate today (a later rate change doesn't rewrite old sales).
+    public function stampFarmers($orderId)
+    {
+        try {
+            $this->execute("UPDATE aku_order_items i
+                              JOIN aku_products p ON i.item_key = CONCAT('p-', p.id)
+                              JOIN aku_farmers f ON f.id = COALESCE(p.farmer_id, (SELECT f2.id FROM aku_farmers f2 WHERE LOWER(TRIM(f2.name)) = LOWER(TRIM(p.farmer)) LIMIT 1))
+                               SET i.farmer_id = f.id, i.source_channel = 'shop', i.commission_rate = f.commission_rate
+                             WHERE i.order_id = ? AND i.type = 'produce' AND i.farmer_id IS NULL", [$orderId]);
+        } catch (Throwable $e) { error_log('Farmer stamp: ' . $e->getMessage()); }   // before Database Update: the order still goes through
+    }
     public function markFailed($id) { $this->execute("UPDATE aku_orders SET payment_status = 'failed' WHERE id = ? AND payment_status <> 'paid'", [$id]); }
     // Atomically "claims" the invoice email so two callbacks can never send it twice.
     // Returns true only for the one request that should send it.

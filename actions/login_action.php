@@ -9,18 +9,30 @@ if ($email === '' || $pass === '') {
     echo json_encode(['success' => false, 'message' => 'Email and password are required.']); exit;
 }
 
-// Lockout after repeated failures (same message whether or not the email exists).
+// Lockout: 3 failed tries for this email + IP locks it for 10 minutes. While locked, every attempt is
+// refused without checking the password. Unknown emails are counted the same, so nothing is revealed.
 $guard = new CustomerClass();
-[$emailFails, $ipFails] = $guard->recentFailures($email, client_ip(), LOGIN_LOCK_MINUTES);
-if (login_locked($emailFails, $ipFails)) {
-    echo json_encode(['success' => false, 'message' => 'Too many failed attempts. Please wait ' . LOGIN_LOCK_MINUTES . ' minutes and try again.']); exit;
+$ip = client_ip();
+$wait = $guard->lockSecondsLeft($email, $ip);
+if ($wait > 0) {
+    $_SESSION['login_lock_until'] = time() + $wait;   // only so the login page can show the countdown after a reload
+    echo json_encode(['success' => false, 'message' => login_lock_message() . ' ' . login_wait_text($wait), 'lock_seconds' => $wait]); exit;
 }
 
 $result = (new CustomerController())->login($email, $pass);
-if (!$result['success']) $guard->recordFailure($email, client_ip());
+if (!$result['success']) {
+    $fails = $guard->recordFailure($email, $ip);
+    if ($fails >= LOGIN_MAX_FAILS) {
+        $wait = max(1, $guard->lockSecondsLeft($email, $ip));
+        $_SESSION['login_lock_until'] = time() + $wait;
+        echo json_encode(['success' => false, 'message' => login_lock_message(), 'lock_seconds' => $wait]); exit;
+    }
+    echo json_encode(['success' => false, 'message' => $fails > 0 ? login_fail_message($fails) : 'Incorrect email or password.']); exit;
+}
 
 if ($result['success']) {
-    $guard->clearFailures($email);
+    $guard->clearFailures($email, $ip);
+    unset($_SESSION['login_lock_until']);
     $chk = (new Database())->fetchOne("SELECT is_active FROM aku_customer WHERE customer_id = ?", [$result['customer']['customer_id']]);
     if ($chk && (int)$chk['is_active'] === 0) {
         echo json_encode(['success' => false, 'message' => 'This account has been deactivated. Contact support.']); exit;

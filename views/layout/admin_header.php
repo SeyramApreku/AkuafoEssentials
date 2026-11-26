@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($pageTitle ?? 'Admin | Akuafo & Essentials') ?></title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="<?= url('css/style.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/style.css') ?>">
 </head>
 <body class="min-h-screen">
 <header class="sticky top-0 z-30 border-b" style="background:var(--background);border-color:var(--border)">

@@ -84,6 +84,15 @@ include __DIR__ . '/layout/header.php';
                 </label>
                 <?php endforeach; ?>
               </div>
+              <h3 class="font-display text-base font-light mb-3">For how long?</h3>
+              <div class="grid grid-cols-3 gap-2 mb-2">
+                <?php foreach (box_durations() as $w => $label): ?>
+                <label class="pill relative py-2.5 text-xs border text-center cursor-pointer" style="border-color:var(--border)">
+                  <input type="radio" name="weeks" value="<?= $w ?>" <?= $w === 4 ? 'checked' : '' ?>><?= e($label) ?>
+                </label>
+                <?php endforeach; ?>
+              </div>
+              <p data-plan-total class="text-sm mb-6" style="color:var(--primary)"></p>
               <div class="flex gap-3">
                 <button class="px-6 py-3 text-sm font-medium btn-primary">Add to order</button>
                 <button type="button" data-close-schedule class="px-6 py-3 text-sm font-medium border" style="border-color:var(--border)">Cancel</button>
@@ -100,7 +109,7 @@ include __DIR__ . '/layout/header.php';
   <div class="mt-20 border-t pt-16" style="border-color:var(--border)">
     <h2 class="font-display text-2xl font-light mb-8">How weekly boxes work</h2>
     <div class="grid md:grid-cols-4 gap-8">
-      <?php foreach ([['01','Choose your box','Pick from Veg, Fruit, Ghana Staples, or Build Your Own Box and select the size for your household.'],['02','Book your delivery slot',"Choose a day and time window that works for you."],['03','Pay via mobile money or card','MTN MoMo, Vodafone Cash, AirtelTigo, or debit card. Billed with the frequency of your subscription.'],['04','Pause or cancel anytime',"Going away? Pause the subscription from your account with 48 hours' notice."]] as [$n,$t,$d]): ?>
+      <?php foreach ([['01','Choose your box','Pick from Veg, Fruit, Ghana Staples, or Build Your Own Box and select the size for your household.'],['02','Book your delivery slot',"Choose a day and time window that works for you."],['03','Pay once for 4, 8 or 12 weeks','MTN MoMo, Vodafone Cash, AirtelTigo, or debit card. You pay for every box in your plan upfront.'],['04','Renew in one click',"We email you " . BOX_REMIND_DAYS . " days before your last box. Renew from the email or from My subscriptions."]] as [$n,$t,$d]): ?>
         <div class="flex flex-col gap-2"><p class="font-display text-3xl font-light" style="color:var(--accent)"><?= $n ?></p><p class="font-medium text-sm"><?= $t ?></p><p class="text-xs leading-relaxed" style="color:var(--muted-foreground)"><?= $d ?></p></div>
       <?php endforeach; ?>
     </div>
@@ -132,6 +141,25 @@ document.querySelectorAll('[data-box]').forEach(function (box) {
       });
     });
   });
+});
+</script>
+
+<script>
+// "For how long?": show what the whole plan costs (one box x number of deliveries).
+document.querySelectorAll('[data-box]').forEach(function (box) {
+  var out = box.querySelector('[data-plan-total]');
+  if (!out) return;
+  function update() {
+    var f = box.querySelector('input[name=frequency]:checked'), w = box.querySelector('input[name=weeks]:checked');
+    var each = parseFloat((box.querySelector('[data-price]').textContent || '').replace(/[^\d.]/g, '')) || 0;
+    var step = { weekly: 1, biweekly: 2, monthly: 4 }[f ? f.value : 'weekly'] || 1;
+    var n = Math.max(1, Math.floor((w ? parseInt(w.value) : 4) / step)), total = each * n;
+    var how = { weekly: 'Every week', biweekly: 'Every 2 weeks', monthly: 'Once a month' }[f ? f.value : 'weekly'];
+    out.textContent = how + ' for ' + (w ? w.value : 4) + ' weeks = ' + n + ' ' + (n === 1 ? 'box' : 'boxes') + '. ' + n + ' \u00d7 GH\u20b5 ' + each + ' = GH\u20b5 ' + (total % 1 === 0 ? total : total.toFixed(2)) + ', paid once.';
+  }
+  box.addEventListener('change', update);
+  box.addEventListener('click', function (e) { if (e.target.closest('[data-size],[data-open-schedule]')) setTimeout(update, 0); });
+  update();
 });
 </script>
 

@@ -63,6 +63,31 @@ if ($act === 'save_area') {
     redirect($page . '?zone=' . $zoneId);
 }
 
+if ($act === 'add_waitlist') {   // start delivering there and tell the people who asked
+    $zoneId = (int)($_POST['zone_id'] ?? 0);
+    $name = trim((string)($_POST['area_name'] ?? ''));
+    if ($name !== '' && (mb_strlen($name) < 2 || mb_strlen($name) > 100)) { $_SESSION['admin_msg'] = 'The area name should be 2 to 100 characters.'; redirect($page); }
+    [$area, $people] = $dc->acceptWaitlist($id, $zoneId, $name);
+    if (!$area) { $_SESSION['admin_msg'] = 'Please choose a zone for this area.'; redirect($page); }
+    $zone = $dc->zone($zoneId);
+    $_SESSION['admin_msg'] = '"' . $area . '" added to ' . $zone['name'] . '. ' . count($people) . ' customer' . (count($people) === 1 ? '' : 's') . ' emailed that we now deliver there.';
+    header('Location: ' . $page, true, 303);   // show the admin the page now, send the emails after
+    finish_response();
+    require_once __DIR__ . '/../core/mailer.php';
+    foreach ($people as $p) {
+        try {
+            $html = email_layout('<tr><td style="padding:24px 30px;font-size:14px;line-height:1.6;">'
+                . '<h2 style="font-family:Georgia,serif;font-weight:normal;margin:0 0 10px;">We now deliver to ' . e($area) . '</h2>'
+                . '<p>Good news! You asked us to deliver to <strong>' . e($area) . '</strong>, and now we do.</p>'
+                . '<p>Delivery there is ' . money($zone['fee']) . ', on ' . e(str_replace(',', ', ', $zone['delivery_days'])) . '.</p>'
+                . '<p style="margin-top:18px;">' . email_button(email_link('views/shop.php'), 'Start shopping') . '</p>'
+                . '</td></tr>');
+            send_mail($p['email'], '', 'We now deliver to ' . $area . ' | Akuafo & Essentials', $html);
+        } catch (Throwable $e) { error_log('Waitlist email: ' . $e->getMessage()); }
+    }
+    exit;
+}
+
 if ($act === 'delete_waitlist') {
     $dc->deleteWaitlist($id);
     $_SESSION['admin_msg'] = 'Removed from the waitlist.';

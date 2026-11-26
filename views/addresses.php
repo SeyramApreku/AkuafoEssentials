@@ -79,11 +79,11 @@ $act = url('actions/address_action.php');
     </div>
     <div>
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)" for="landmark">Nearest landmark</label>
-      <input id="landmark" type="text" name="landmark" maxlength="150" placeholder="e.g. Opposite Shell, Oxford Street" value="<?= e($f['landmark']) ?>" class="<?= $box ?>" style="border-color:var(--border)">
+      <input id="landmark" type="text" name="landmark" required minlength="3" maxlength="150" placeholder="e.g. Opposite Shell, Oxford Street" title="Describe a real place nearby, in words (not just numbers)" value="<?= e($f['landmark']) ?>" class="<?= $box ?>" style="border-color:var(--border)">
     </div>
     <div>
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)" for="phone">Phone for delivery</label>
-      <input id="phone" type="tel" name="phone" required maxlength="20" placeholder="0244 000 000" value="<?= e($f['phone'] ?: ($_SESSION['customer_contact'] ?? '')) ?>" class="<?= $box ?>" style="border-color:var(--border)">
+      <input id="phone" type="tel" name="phone" required inputmode="tel" autocomplete="tel" maxlength="16" placeholder="024 123 4567" value="<?= e($f['phone'] ?: ($_SESSION['customer_contact'] ?? '')) ?>" class="<?= $box ?>" style="border-color:var(--border)">
     </div>
     <div class="sm:col-span-2">
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)" for="notes">Delivery notes (optional)</label>
@@ -108,7 +108,7 @@ $act = url('actions/address_action.php');
     <p class="text-sm mb-4" style="color:var(--muted-foreground)">We don't deliver there yet. Tell us where you are and we'll email you when we do.</p>
     <form method="post" action="<?= $act ?>" class="flex flex-col sm:flex-row gap-3">
       <input type="hidden" name="act" value="waitlist"><input type="hidden" name="next" value="<?= e($back) ?>">
-      <input type="text" name="area_name" required maxlength="100" placeholder="Your area, e.g. Aburi" class="<?= $box ?>" style="border-color:var(--border);background:var(--card)">
+      <input type="text" name="area_name" required minlength="2" maxlength="100" placeholder="Your area, e.g. Aburi" class="<?= $box ?>" style="border-color:var(--border);background:var(--card)">
       <button class="px-6 py-3 text-sm font-medium btn-primary whitespace-nowrap">Notify me</button>
     </form>
   </div>

@@ -109,7 +109,7 @@ $act = url('actions/admin_ent_items_action.php');
       <label class="<?= $lbl ?>" style="color:var(--muted-foreground)">Image</label>
       <?php if (!empty($f['image'])): ?><img src="<?= img($f['image'], 240, 180) ?>" alt="" class="w-28 h-20 object-cover mb-2"><?php endif; ?>
       <input type="file" name="image" accept="image/jpeg,image/png,image/webp" class="text-sm">
-      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP, up to 2 MB.<?= $edit ? ' Leave empty to keep the current image.' : ' Leave empty to use the placeholder for now.' ?></p>
+      <p class="text-xs mt-1" style="color:var(--muted-foreground)">JPG, PNG or WebP. Big photos are resized automatically.<?= $edit ? ' Leave empty to keep the current image.' : ' Leave empty to use the placeholder for now.' ?></p>
     </div>
 
     <div class="md:col-span-2 flex flex-wrap gap-6">

@@ -12,6 +12,9 @@ if ($fromEmail && !empty($_SESSION['customer_id'])) {
 }
 if (!empty($_SESSION['customer_id'])) redirect(url($next ?: 'index.php'));
 $nextQs = $next ? '?next=' . urlencode($next) : '';
+// Still locked out from a recent try? Show the countdown (the real lock is enforced in actions/login_action.php).
+$lockLeft = max(0, (int)($_SESSION['login_lock_until'] ?? 0) - time());
+if (!$lockLeft) unset($_SESSION['login_lock_until']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,7 +23,7 @@ $nextQs = $next ? '?next=' . urlencode($next) : '';
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Log in | Akuafo &amp; Essentials</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="<?= url('css/style.css') ?>">
+  <link rel="stylesheet" href="<?= asset('css/style.css') ?>">
 </head>
 <body class="min-h-screen flex items-center justify-center px-5">
   <div class="w-full max-w-sm py-12">
@@ -36,11 +39,12 @@ $nextQs = $next ? '?next=' . urlencode($next) : '';
       <input type="email" id="customer_email" name="customer_email" placeholder="Email" class="px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
       <input type="password" id="customer_pass" name="customer_pass" placeholder="Password" class="px-4 py-3 text-sm border outline-none bg-transparent" style="border-color:var(--border)">
       <label class="text-xs flex items-center gap-2 cursor-pointer" style="color:var(--muted-foreground)"><input type="checkbox" onclick="togglePassword()"> Show password</label>
-      <button type="submit" class="px-5 py-3 text-sm font-medium btn-primary">Log in</button>
+      <button type="submit" id="loginBtn" class="px-5 py-3 text-sm font-medium btn-primary">Log in</button>
     </form>
-    <p id="formMessage" class="text-sm mt-4"></p>
+    <p id="formMessage" class="text-sm mt-4" <?= $lockLeft ? 'style="color:#b3261e"' : '' ?>><?= $lockLeft ? e(login_lock_message()) : '' ?></p>
+    <p id="lockTimer" class="text-sm mt-1" style="color:#b3261e" data-seconds="<?= $lockLeft ?>"><?= $lockLeft ? e(login_wait_text($lockLeft)) : '' ?></p>
     <p class="text-sm mt-6" style="color:var(--muted-foreground)">New here? <a href="register.php<?= e($nextQs) ?>" class="font-medium" style="color:var(--primary)">Create an account</a></p>
   </div>
-  <script src="<?= url('js/customer.js') ?>"></script>
+  <script src="<?= asset('js/customer.js') ?>"></script>
 </body>
 </html>

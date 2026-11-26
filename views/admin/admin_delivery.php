@@ -120,15 +120,26 @@ $days = zone_day_names();
 
   <?php $wait = []; try { $wait = $dc->waitlist(); } catch (PDOException $e) { /* table created in D2 */ } ?>
   <h2 class="font-display text-2xl mt-12 mb-2">Delivery waitlist (<?= count($wait) ?>)</h2>
-  <p class="text-xs mb-4" style="color:var(--muted-foreground)">Customers asking us to deliver to areas we don't cover yet. Add the area to a zone, then email them.</p>
+  <p class="text-xs mb-4" style="color:var(--muted-foreground)">Customers asking us to deliver to areas we don't cover yet. Pick a zone and click <strong>Add</strong>: the area starts getting deliveries and everyone who asked for it is emailed automatically.</p>
   <div class="border" style="border-color:var(--border)">
     <?php foreach ($wait as $w): ?>
-      <div class="flex items-center gap-4 p-3 border-b last:border-b-0 text-sm" style="border-color:var(--border)">
+      <div class="flex flex-wrap items-center gap-4 p-3 border-b last:border-b-0 text-sm" style="border-color:var(--border)">
         <span class="font-medium w-40 truncate"><?= e($w['area_name']) ?></span>
         <a href="mailto:<?= e($w['email']) ?>" class="flex-1 truncate underline"><?= e($w['email']) ?></a>
         <span class="text-xs" style="color:var(--muted-foreground)"><?= e(date('j M Y', strtotime($w['created_at']))) ?></span>
-        <form method="post" action="<?= $act ?>"><input type="hidden" name="act" value="delete_waitlist"><input type="hidden" name="id" value="<?= (int)$w['id'] ?>">
-          <button class="text-xs font-medium px-3 py-1.5 border" style="border-color:var(--border)">Remove</button></form>
+        <?php if ($zones): ?>
+        <form method="post" action="<?= $act ?>" class="flex flex-wrap items-center gap-2" data-confirm="Start delivering to <?= e('"' . $w['area_name'] . '"') ?> and email everyone who asked for it?" data-confirm-yes="Add area">
+          <input type="hidden" name="act" value="add_waitlist"><input type="hidden" name="id" value="<?= (int)$w['id'] ?>">
+          <input type="text" name="area_name" value="<?= e($w['area_name']) ?>" maxlength="100" aria-label="Area name" title="You can tidy the name before adding it" class="px-2 py-1.5 text-xs border bg-transparent w-36" style="border-color:var(--border)">
+          <select name="zone_id" required class="px-2 py-1.5 text-xs border bg-transparent" style="border-color:var(--border)" aria-label="Zone">
+            <option value="">Zone…</option>
+            <?php foreach ($zones as $z): ?><option value="<?= (int)$z['id'] ?>"><?= e($z['name']) ?> · <?= money($z['fee']) ?></option><?php endforeach; ?>
+          </select>
+          <button class="text-xs font-medium px-3 py-1.5 btn-primary">Add</button>
+        </form>
+        <?php endif; ?>
+        <form method="post" action="<?= $act ?>" data-confirm="Remove <?= e($w['email']) ?> from the waitlist without adding the area?"><input type="hidden" name="act" value="delete_waitlist"><input type="hidden" name="id" value="<?= (int)$w['id'] ?>">
+          <button class="text-xs font-medium px-3 py-1.5 border" style="border-color:var(--border);color:#b3261e">Remove</button></form>
       </div>
     <?php endforeach; ?>
     <?php if (!$wait): ?><p class="p-4 text-sm" style="color:var(--muted-foreground)">Nobody on the waitlist.</p><?php endif; ?>
